@@ -1,0 +1,10 @@
+name: "Simple Pyright Action"
+description: "Run Pyright on your Python pull requests."
+author: "Jay Jackson"
+branding:
+    icon: "code"
+    color: "green"
+
+runs:
+    using: "node20"
+    main: "dist/index.js"
