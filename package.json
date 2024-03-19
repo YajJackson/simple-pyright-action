@@ -1,0 +1,27 @@
+{
+    "name": "simple-pyright-action",
+    "version": "1.0.0",
+    "description": "GitHub Action that adds pyright checks to python pull requests.",
+    "main": "build/index.js",
+    "scripts": {
+        "build": "esbuild src/index.ts --bundle --outfile=build/index.js --platform=node --target=node20 --main-fields=module,main"
+    },
+    "keywords": [
+        "python",
+        "pyright",
+        "github",
+        "github-actions"
+    ],
+    "author": "Jay Jackson",
+    "license": "MIT",
+    "dependencies": {
+        "@actions/core": "^1.10.1",
+        "@actions/exec": "^1.1.1",
+        "@actions/github": "^6.0.0",
+        "@badrap/valita": "^0.3.6"
+    },
+    "devDependencies": {
+        "@types/node": "^20.11.30",
+        "esbuild": "^0.20.2"
+    }
+}
