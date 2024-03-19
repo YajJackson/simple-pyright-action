@@ -25042,11 +25042,30 @@ var Report = object({
 async function run() {
   try {
     core.info("Starting Pyright Action");
+    const runInfo = getRunInfo();
+    core.info("runInfo: " + JSON.stringify(runInfo));
+    const pullRequestData = await getPullRequestData(runInfo);
+    core.info("pullRequestData: " + JSON.stringify(pullRequestData));
   } catch (error) {
     core.setFailed(`Action failed with error: ${error}`);
   }
 }
-run();
+var getRunInfo = () => {
+  const token = core.getInput("github-token", { required: true });
+  const octokit = github.getOctokit(token);
+  core.info("Initialized octokit");
+  const context2 = github.context;
+  return { token, octokit, context: context2 };
+};
+async function getPullRequestData(runInfo) {
+  const { octokit, context: context2 } = runInfo;
+  const { data: pullRequestData } = await octokit.rest.pulls.get({
+    owner: context2.repo.owner,
+    repo: context2.repo.repo,
+    pull_number: context2.issue.number
+  });
+  return pullRequestData;
+}
 
 // src/index.ts
 void run();
