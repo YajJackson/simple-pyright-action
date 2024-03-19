@@ -126,5 +126,3 @@ async function commentOnPR(
         body: summary,
     });
 }
-
-run();
