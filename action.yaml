@@ -5,6 +5,11 @@ branding:
     icon: "code"
     color: "green"
 
+inputs:
+  github-token:
+    description: 'GitHub Token'
+    required: true
+
 runs:
     using: "node20"
     main: "build/index.js"
