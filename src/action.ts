@@ -10,8 +10,8 @@ export async function run() {
         core.info("Starting Pyright Action");
         const runInfo = getRunInfo();
         core.info("runInfo: " + JSON.stringify(runInfo));
-        // const pullRequestData = await getPullRequestData(runInfo);
-        // core.info("pullRequestData: " + JSON.stringify(pullRequestData));
+        const pullRequestData = await getPullRequestData(runInfo);
+        core.info("pullRequestData: " + JSON.stringify(pullRequestData));
         // const pythonFiles = await getChangedPythonFiles(
         //     runInfo,
         //     pullRequestData,
@@ -33,6 +33,7 @@ export async function run() {
 const getRunInfo = () => {
     const token = core.getInput("github-token", { required: true });
     const octokit = github.getOctokit(token);
+    core.info("Initialized octokit");
     const context = github.context;
     return { token, octokit, context };
 };
