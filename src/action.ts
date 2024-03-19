@@ -7,14 +7,18 @@ import { getRelativePath } from "./helpers";
 
 export async function run() {
     try {
+        core.info("Starting Pyright Action");
         const runInfo = getRunInfo();
+        core.info("runInfo: " + JSON.stringify(runInfo));
         const pullRequestData = await getPullRequestData(runInfo);
+        core.info("pullRequestData: " + JSON.stringify(pullRequestData));
         const pythonFiles = await getChangedPythonFiles(
             runInfo,
             pullRequestData,
         );
+        core.info("pythonFiles: " + pythonFiles.length);
         if (pythonFiles.length === 0) {
-            console.log("No Python files have changed.");
+            core.info("No Python files have changed.");
             return;
         }
 
