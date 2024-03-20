@@ -21,7 +21,7 @@ const getSeverityIcon = (severity: string) => {
     }
 };
 
-export const diagnosticToString = (
+export const formatDiagnostic = (
     diag: Diagnostic,
     fileName: string,
 ): string => {
@@ -55,29 +55,18 @@ export const getRelativePath = (file: string, repoName: string) => {
     return file.slice(secondOccurrenceStartIndex + repoName.length + 1);
 };
 
-export const generateCommentKey = (
-    filePath: string,
-    pullRequestNumber: number,
-) => {
+export const createCommentKey = (prefix: string, value: string) =>
+    `${prefix}:${value}`;
+
+export const generateCommentKey = (prefix: string, value: string) => {
     const hash = createHash("sha256");
-    hash.update(`${filePath}-${pullRequestNumber}`);
-    return hash.digest("hex").substring(0, 16);
+    hash.update(value);
+    const v = hash.digest("hex").substring(0, 16);
+    return `[${prefix}:${v}]`;
 };
 
-export const parseCommentKey = (input: string) => {
-    const regex = /\[diagnostic-key:([^\]]+)\]/;
-    const match = regex.exec(input);
-    return match ? match[1] : null;
-};
-
-export const parseSummaryCommentKey = (input: string) => {
-    const regex = /\[diagnostic-summary-key:([^\]]+)\]/;
-    const match = regex.exec(input);
-    return match ? match[1] : null;
-};
-
-export const parseBaseSummaryCommentKey = (input: string) => {
-    const regex = /\[base-summary-key:([^\]]+)\]/;
+export const findCommentKeyValue = (input: string, keyPrefix: string) => {
+    const regex = new RegExp(`\\[${keyPrefix}:([^\\]]+)\\]`);
     const match = regex.exec(input);
     return match ? match[1] : null;
 };

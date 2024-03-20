@@ -30110,9 +30110,7 @@ var Report = object({
     filesAnalyzed: number()
   })
 });
-function parseReport(v) {
-  return Report.parse(v, { mode: "strip" });
-}
+var parseReport = (v) => Report.parse(v, { mode: "strip" });
 
 // src/helpers.ts
 var import_crypto4 = require("crypto");
@@ -30131,7 +30129,7 @@ var getSeverityIcon = (severity) => {
       return "";
   }
 };
-var diagnosticToString = (diag, fileName) => {
+var formatDiagnostic = (diag, fileName) => {
   let message = `${fileName}:`;
   if (diag.range && !isEmptyRange(diag.range))
     message += `${diag.range.start.line + 1}:${diag.range.start.character + 1} -`;
@@ -30152,23 +30150,15 @@ var getRelativePath = (file, repoName) => {
   }
   return file.slice(secondOccurrenceStartIndex + repoName.length + 1);
 };
-var generateCommentKey = (filePath, pullRequestNumber) => {
+var createCommentKey = (prefix, value) => `${prefix}:${value}`;
+var generateCommentKey = (prefix, value) => {
   const hash = (0, import_crypto4.createHash)("sha256");
-  hash.update(`${filePath}-${pullRequestNumber}`);
-  return hash.digest("hex").substring(0, 16);
+  hash.update(value);
+  const v = hash.digest("hex").substring(0, 16);
+  return `[${prefix}:${v}]`;
 };
-var parseCommentKey = (input) => {
-  const regex2 = /\[diagnostic-key:([^\]]+)\]/;
-  const match = regex2.exec(input);
-  return match ? match[1] : null;
-};
-var parseSummaryCommentKey = (input) => {
-  const regex2 = /\[diagnostic-summary-key:([^\]]+)\]/;
-  const match = regex2.exec(input);
-  return match ? match[1] : null;
-};
-var parseBaseSummaryCommentKey = (input) => {
-  const regex2 = /\[base-summary-key:([^\]]+)\]/;
+var findCommentKeyValue = (input, keyPrefix) => {
+  const regex2 = new RegExp(`\\[${keyPrefix}:([^\\]]+)\\]`);
   const match = regex2.exec(input);
   return match ? match[1] : null;
 };
@@ -31470,15 +31460,14 @@ async function run() {
       core.info("No Python files have changed.");
       return;
     }
-    await installPyright();
     const pyrightReport = await runPyright(pythonFiles);
     if (runInfo.options.includeFileComments)
       await addFileComments(runInfo, pyrightReport, pullRequestData);
     if (runInfo.options.includeBaseComparison) {
-      await addBaseComparisonComment(pullRequestData);
-      return;
+      await addBaseComparisonComment(runInfo, pullRequestData);
+    } else {
+      await addSummaryComment(runInfo, pyrightReport, pullRequestData);
     }
-    await addSummaryComment(runInfo, pyrightReport, pullRequestData);
   } catch (error) {
     core.setFailed(`Action failed with error: ${error}`);
   }
@@ -31493,16 +31482,20 @@ var getRunInfo = () => {
 var getOptions = () => {
   const includeFileComments = core.getBooleanInput("include-file-comments") ?? true;
   const includeBaseComparison = core.getBooleanInput("include-base-comparison") ?? false;
-  return { includeFileComments, includeBaseComparison };
+  const failOnIssueIncrease = core.getBooleanInput("fail-on-issue-increase") ?? false;
+  return { includeFileComments, includeBaseComparison, failOnIssueIncrease };
 };
 async function getChangedPythonFiles(runInfo, pullRequest) {
   const { octokit, context: context2 } = runInfo;
-  const compareData = await octokit.rest.repos.compareCommitsWithBasehead({
+  const { data: compareData } = await octokit.rest.repos.compareCommitsWithBasehead({
     owner: context2.repo.owner,
     repo: context2.repo.repo,
     basehead: `${pullRequest.base.sha}...${pullRequest.head.sha}`
   });
-  return compareData.data.files?.filter((file) => file.filename?.endsWith(".py")).map((file) => file.filename) || [];
+  if (!compareData.files)
+    return [];
+  const pythonFiles = compareData.files.filter((file) => file.filename?.endsWith(".py")).map((file) => file.filename) || [];
+  return pythonFiles;
 }
 async function getPullRequestData(runInfo) {
   const { octokit, context: context2 } = runInfo;
@@ -31518,6 +31511,7 @@ async function installPyright() {
   await (0, import_exec.exec)("npm", ["install", "-g", "pyright"]);
 }
 async function runPyright(files) {
+  await installPyright();
   let pyrightCommand = `pyright --outputjson`;
   if (files)
     pyrightCommand += ` ${files.join(" ")}`;
@@ -31539,21 +31533,21 @@ async function checkoutBaseBranch(pullRequest) {
   await (0, import_exec.exec)("git", ["fetch", "origin", `${pullRequest.base.ref}`]);
   await (0, import_exec.exec)("git", ["checkout", `${pullRequest.base.ref}`]);
 }
-async function addBaseComparisonComment(pullRequest) {
+async function addBaseComparisonComment(runInfo, pullRequest) {
   core.info("Generating base comparison comment.");
   const { octokit, context: context2 } = getRunInfo();
   const headReport = await runPyright();
   await checkoutBaseBranch(pullRequest);
   const baseReport = await runPyright();
   const fileDiff = headReport.summary.filesAnalyzed - baseReport.summary.filesAnalyzed;
-  const fileDiffIcon = fileDiff == 0 ? "-" : fileDiff > 0 ? "\u2B06\uFE0F" : "\u2B07\uFE0F";
+  const fileDiffIcon = fileDiff == 0 ? "" : fileDiff > 0 ? "\u2B06\uFE0F" : "\u2B07\uFE0F";
   const warningDiff = headReport.summary.warningCount - baseReport.summary.warningCount;
   const warningDiffIcon = warningDiff <= 0 ? "\u2705" : "\u274C";
   const errorDiff = headReport.summary.errorCount - baseReport.summary.errorCount;
   const errorDiffIcon = errorDiff <= 0 ? "\u2705" : "\u274C";
   let comparisonMessage = `## Pyright Summary
 `;
-  comparisonMessage += `| | files | warnings | errors |
+  comparisonMessage += `| | files analyzed | warnings | errors |
 `;
   comparisonMessage += `| --- | :--: | :--: | :--: |
 `;
@@ -31563,12 +31557,11 @@ async function addBaseComparisonComment(pullRequest) {
 `;
   comparisonMessage += `| diff | ${fileDiffIcon} ${fileDiff} | ${warningDiffIcon} ${warningDiff} | ${errorDiffIcon} ${errorDiff} |
 `;
-  const baseSummaryKey = generateCommentKey(
-    "pyright-base-summary",
-    pullRequest.number
-  );
+  const keyPrefix = "base-summary-key";
+  const keyValue = `${pullRequest.number}`;
+  const baseSummaryKey = generateCommentKey(keyPrefix, keyValue);
   comparisonMessage += `
-###### [base-summary-key:${baseSummaryKey}]`;
+###### ${baseSummaryKey}`;
   const { data: existingComments } = await octokit.rest.issues.listComments({
     owner: context2.repo.owner,
     repo: context2.repo.repo,
@@ -31581,8 +31574,7 @@ async function addBaseComparisonComment(pullRequest) {
       return false;
     if (!comment.body)
       return false;
-    const key = parseBaseSummaryCommentKey(comment.body);
-    return key === baseSummaryKey;
+    return comment.body.includes(baseSummaryKey);
   });
   if (existingComparisonComment) {
     core.info(
@@ -31605,37 +31597,41 @@ async function addBaseComparisonComment(pullRequest) {
     issue_number: context2.issue.number,
     body: comparisonMessage
   });
+  if (!runInfo.options.failOnIssueIncrease)
+    return;
+  if (errorDiff > 0 || warningDiff > 0) {
+    core.setFailed(
+      `Pyright found ${errorDiff} errors and ${warningDiff} warnings.`
+    );
+  }
 }
 async function addFileComments(runInfo, report, pullRequest) {
   core.info("Generating file comments.");
   const { octokit, context: context2 } = runInfo;
-  const diagnostics = report.generalDiagnostics;
   const { data: existingReviewComments } = await octokit.rest.pulls.listReviewComments({
     owner: context2.repo.owner,
     repo: context2.repo.repo,
     pull_number: pullRequest.number
   });
-  const keyedExistingReviewComments = existingReviewComments.reduce((acc, comment) => {
+  const keyPrefix = "file-diagnostic-key";
+  const keyedExistingReviewComments = {};
+  for (const comment of existingReviewComments) {
     if (comment.user.login !== "github-actions[bot]")
-      return acc;
-    const commentKey = parseCommentKey(comment.body);
-    core.info(
-      `Keying user: ${comment.user.login} comment: ${comment.id} - ${comment.body} | key: ${commentKey}`
-    );
-    if (commentKey) {
-      acc[commentKey] = comment;
+      continue;
+    const commentKeyValue = findCommentKeyValue(comment.body, keyPrefix);
+    if (commentKeyValue) {
+      const commentKey = createCommentKey(keyPrefix, commentKeyValue);
+      keyedExistingReviewComments[commentKey] = comment;
     }
-    return acc;
-  }, {});
+  }
   const diagnosticsByFile = {};
-  for (const diagnostic of diagnostics) {
+  for (const diagnostic of report.generalDiagnostics) {
     const relativePath = getRelativePath(
       diagnostic.file,
       pullRequest.base.repo.name
     );
-    if (!diagnosticsByFile[relativePath]) {
+    if (!diagnosticsByFile[relativePath])
       diagnosticsByFile[relativePath] = [];
-    }
     diagnosticsByFile[relativePath].push(diagnostic);
   }
   const processedCommentKeys = [];
@@ -31651,15 +31647,15 @@ async function addFileComments(runInfo, report, pullRequest) {
     )}</summary>
 
 `;
-    for (const diagnostic of fileDiagnostics) {
-      body += `- ${diagnosticToString(diagnostic, relativePath)}
+    for (const diagnostic of fileDiagnostics)
+      body += `- ${formatDiagnostic(diagnostic, relativePath)}
 `;
-    }
     body += "</details>";
-    const commentKey = generateCommentKey(relativePath, pullRequest.number);
+    const keyValue = `${pullRequest.number}-${relativePath}`;
+    const commentKey = generateCommentKey(keyPrefix, keyValue);
     body += `
 
-###### [diagnostic-key:${commentKey}]`;
+###### ${commentKey}`;
     processedCommentKeys.push(commentKey);
     const existingComment = keyedExistingReviewComments[commentKey];
     if (existingComment) {
@@ -31714,13 +31710,12 @@ async function addSummaryComment(runInfo, report, pullRequest) {
     summary += `**\u26A0\uFE0F Warnings**: ${report.summary.warningCount}`;
   if (report.summary.errorCount === 0 && report.summary.warningCount === 0)
     summary += `\u2705 No errors or warnings found.`;
-  const summaryKey = generateCommentKey(
-    "pyright-summary",
-    pullRequest.number
-  );
+  const keyPrefix = "diagnostic-summary-key";
+  const keyValue = `${pullRequest.number}`;
+  const summaryKey = generateCommentKey(keyPrefix, keyValue);
   summary += `
 
-###### [diagnostic-summary-key:${summaryKey}]`;
+###### ${summaryKey}`;
   const { data: existingComments } = await octokit.rest.issues.listComments({
     owner: context2.repo.owner,
     repo: context2.repo.repo,
@@ -31733,7 +31728,7 @@ async function addSummaryComment(runInfo, report, pullRequest) {
       return false;
     if (!comment.body)
       return false;
-    const key = parseSummaryCommentKey(comment.body);
+    const key = findCommentKeyValue(comment.body, keyPrefix);
     return key === summaryKey;
   });
   if (existingSummaryComment) {
@@ -31753,6 +31748,13 @@ async function addSummaryComment(runInfo, report, pullRequest) {
     issue_number: context2.issue.number,
     body: summary
   });
+  if (!runInfo.options.failOnIssueIncrease)
+    return;
+  if (report.summary.errorCount > 0 || report.summary.warningCount > 0) {
+    core.setFailed(
+      `Pyright found ${report.summary.errorCount} errors and ${report.summary.warningCount} warnings.`
+    );
+  }
 }
 
 // src/index.ts

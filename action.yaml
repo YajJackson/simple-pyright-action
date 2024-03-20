@@ -6,17 +6,22 @@ branding:
     color: "green"
 
 inputs:
+    # Required
     github-token:
         description: "GitHub Token"
         required: true
 
     # Optional
     include-file-comments:
-        description: "Include file comments in the output."
+        description: "Include file-specific comments on pull requests. Comments are upserted."
         required: false
         default: "true"
     include-base-comparison:
         description: "When this is true, pyright statistics will be calculated for the whole project on both the base and head."
+        required: false
+        default: "false"
+    fail-on-issue-increase:
+        description: "When this is true, the action will fail if the number of issues increases from the base to the head."
         required: false
         default: "false"
 

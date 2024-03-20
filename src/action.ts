@@ -3,13 +3,12 @@ import * as github from "@actions/github";
 import { ExecOptions, exec } from "@actions/exec";
 import { Diagnostic, Report, parseReport } from "./types";
 import {
-    diagnosticToString,
+    formatDiagnostic,
     generateCommentKey,
     getRelativePath,
-    parseBaseSummaryCommentKey,
-    parseCommentKey,
-    parseSummaryCommentKey,
+    findCommentKeyValue,
     pluralize,
+    createCommentKey,
 } from "./helpers";
 import { Octokit } from "octokit";
 
@@ -21,23 +20,22 @@ export async function run() {
             runInfo,
             pullRequestData,
         );
+
         if (pythonFiles.length === 0) {
             core.info("No Python files have changed.");
             return;
         }
 
-        await installPyright();
         const pyrightReport = await runPyright(pythonFiles);
 
         if (runInfo.options.includeFileComments)
             await addFileComments(runInfo, pyrightReport, pullRequestData);
 
         if (runInfo.options.includeBaseComparison) {
-            await addBaseComparisonComment(pullRequestData);
-            return;
+            await addBaseComparisonComment(runInfo, pullRequestData);
+        } else {
+            await addSummaryComment(runInfo, pyrightReport, pullRequestData);
         }
-
-        await addSummaryComment(runInfo, pyrightReport, pullRequestData);
     } catch (error) {
         core.setFailed(`Action failed with error: ${error}`);
     }
@@ -56,7 +54,9 @@ const getOptions = () => {
         core.getBooleanInput("include-file-comments") ?? true;
     const includeBaseComparison =
         core.getBooleanInput("include-base-comparison") ?? false;
-    return { includeFileComments, includeBaseComparison };
+    const failOnIssueIncrease =
+        core.getBooleanInput("fail-on-issue-increase") ?? false;
+    return { includeFileComments, includeBaseComparison, failOnIssueIncrease };
 };
 
 async function getChangedPythonFiles(
@@ -65,17 +65,21 @@ async function getChangedPythonFiles(
 ): Promise<string[]> {
     const { octokit, context } = runInfo;
 
-    const compareData = await octokit.rest.repos.compareCommitsWithBasehead({
-        owner: context.repo.owner,
-        repo: context.repo.repo,
-        basehead: `${pullRequest.base.sha}...${pullRequest.head.sha}`,
-    });
+    const { data: compareData } =
+        await octokit.rest.repos.compareCommitsWithBasehead({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            basehead: `${pullRequest.base.sha}...${pullRequest.head.sha}`,
+        });
 
-    return (
-        compareData.data.files
-            ?.filter((file) => file.filename?.endsWith(".py"))
-            .map((file) => file.filename) || []
-    );
+    if (!compareData.files) return [];
+
+    const pythonFiles =
+        compareData.files
+            .filter((file) => file.filename?.endsWith(".py"))
+            .map((file) => file.filename) || [];
+
+    return pythonFiles;
 }
 
 async function getPullRequestData(runInfo: ReturnType<typeof getRunInfo>) {
@@ -95,6 +99,8 @@ async function installPyright() {
 }
 
 async function runPyright(files?: string[]): Promise<Report> {
+    await installPyright();
+
     let pyrightCommand = `pyright --outputjson`;
     if (files) pyrightCommand += ` ${files.join(" ")}`;
 
@@ -123,19 +129,22 @@ async function checkoutBaseBranch(
 }
 
 async function addBaseComparisonComment(
+    runInfo: ReturnType<typeof getRunInfo>,
     pullRequest: Awaited<ReturnType<typeof getPullRequestData>>,
 ) {
     core.info("Generating base comparison comment.");
 
     const { octokit, context } = getRunInfo();
 
+    // Generate pyright reports for the head and base branches
     const headReport = await runPyright();
     await checkoutBaseBranch(pullRequest);
     const baseReport = await runPyright();
 
+    // Format the summary message
     const fileDiff =
         headReport.summary.filesAnalyzed - baseReport.summary.filesAnalyzed;
-    const fileDiffIcon = fileDiff == 0 ? "-" : fileDiff > 0 ? "⬆️" : "⬇️";
+    const fileDiffIcon = fileDiff == 0 ? "" : fileDiff > 0 ? "⬆️" : "⬇️";
     const warningDiff =
         headReport.summary.warningCount - baseReport.summary.warningCount;
     const warningDiffIcon = warningDiff <= 0 ? "✅" : "❌";
@@ -143,18 +152,18 @@ async function addBaseComparisonComment(
         headReport.summary.errorCount - baseReport.summary.errorCount;
     const errorDiffIcon = errorDiff <= 0 ? "✅" : "❌";
     let comparisonMessage = `## Pyright Summary\n`;
-    comparisonMessage += `| | files | warnings | errors |\n`;
+    comparisonMessage += `| | files analyzed | warnings | errors |\n`;
     comparisonMessage += `| --- | :--: | :--: | :--: |\n`;
     comparisonMessage += `| base | ${baseReport.summary.filesAnalyzed} | ${baseReport.summary.warningCount} | ${baseReport.summary.errorCount} |\n`;
     comparisonMessage += `| head | ${headReport.summary.filesAnalyzed} | ${headReport.summary.warningCount} | ${headReport.summary.errorCount} |\n`;
     comparisonMessage += `| diff | ${fileDiffIcon} ${fileDiff} | ${warningDiffIcon} ${warningDiff} | ${errorDiffIcon} ${errorDiff} |\n`;
 
-    const baseSummaryKey = generateCommentKey(
-        "pyright-base-summary",
-        pullRequest.number,
-    );
-    comparisonMessage += `\n###### [base-summary-key:${baseSummaryKey}]`;
+    const keyPrefix = "base-summary-key";
+    const keyValue = `${pullRequest.number}`;
+    const baseSummaryKey = generateCommentKey(keyPrefix, keyValue);
+    comparisonMessage += `\n###### ${baseSummaryKey}`;
 
+    // Update or create the comment
     const { data: existingComments } = await octokit.rest.issues.listComments({
         owner: context.repo.owner,
         repo: context.repo.repo,
@@ -165,8 +174,7 @@ async function addBaseComparisonComment(
         if (!comment.user) return false;
         if (comment.user.login !== "github-actions[bot]") return false;
         if (!comment.body) return false;
-        const key = parseBaseSummaryCommentKey(comment.body);
-        return key === baseSummaryKey;
+        return comment.body.includes(baseSummaryKey);
     });
 
     if (existingComparisonComment) {
@@ -191,6 +199,15 @@ async function addBaseComparisonComment(
         issue_number: context.issue.number,
         body: comparisonMessage,
     });
+
+    // Fail the action if the option is set
+    if (!runInfo.options.failOnIssueIncrease) return;
+
+    if (errorDiff > 0 || warningDiff > 0) {
+        core.setFailed(
+            `Pyright found ${errorDiff} errors and ${warningDiff} warnings.`,
+        );
+    }
 }
 
 async function addFileComments(
@@ -202,8 +219,6 @@ async function addFileComments(
 
     const { octokit, context } = runInfo;
 
-    const diagnostics = report.generalDiagnostics;
-
     const { data: existingReviewComments } =
         await octokit.rest.pulls.listReviewComments({
             owner: context.repo.owner,
@@ -211,35 +226,38 @@ async function addFileComments(
             pull_number: pullRequest.number,
         });
 
+    // Find the existing file diagnostic comments
     type KeyedComments = {
         [key: string]: (typeof existingReviewComments)[0];
     };
 
-    const keyedExistingReviewComments =
-        existingReviewComments.reduce<KeyedComments>((acc, comment) => {
-            if (comment.user.login !== "github-actions[bot]") return acc;
+    const keyPrefix = "file-diagnostic-key";
+    const keyedExistingReviewComments: KeyedComments = {};
+    for (const comment of existingReviewComments) {
+        if (comment.user.login !== "github-actions[bot]") continue;
 
-            const commentKey = parseCommentKey(comment.body);
-            core.info(
-                `Keying user: ${comment.user.login} comment: ${comment.id} - ${comment.body} | key: ${commentKey}`,
-            );
-            if (commentKey) {
-                acc[commentKey] = comment;
-            }
-            return acc;
-        }, {});
+        const commentKeyValue = findCommentKeyValue(comment.body, keyPrefix);
+
+        if (commentKeyValue) {
+            const commentKey = createCommentKey(keyPrefix, commentKeyValue);
+            keyedExistingReviewComments[commentKey] = comment;
+        }
+    }
 
     // Group diagnostics by relative path
-    const diagnosticsByFile: { [key: string]: Diagnostic[] } = {};
-    for (const diagnostic of diagnostics) {
+    type KeyedDiagnostics = {
+        [key: string]: Diagnostic[];
+    };
+
+    const diagnosticsByFile: KeyedDiagnostics = {};
+    for (const diagnostic of report.generalDiagnostics) {
         const relativePath = getRelativePath(
             diagnostic.file,
             pullRequest.base.repo.name,
         );
 
-        if (!diagnosticsByFile[relativePath]) {
+        if (!diagnosticsByFile[relativePath])
             diagnosticsByFile[relativePath] = [];
-        }
 
         diagnosticsByFile[relativePath].push(diagnostic);
     }
@@ -255,13 +273,16 @@ async function addFileComments(
             "Issue",
             "Issues",
         )}</summary>\n\n`;
-        for (const diagnostic of fileDiagnostics) {
-            body += `- ${diagnosticToString(diagnostic, relativePath)}\n`;
-        }
+
+        for (const diagnostic of fileDiagnostics)
+            body += `- ${formatDiagnostic(diagnostic, relativePath)}\n`;
+
         body += "</details>";
 
-        const commentKey = generateCommentKey(relativePath, pullRequest.number);
-        body += `\n\n###### [diagnostic-key:${commentKey}]`;
+        const keyValue = `${pullRequest.number}-${relativePath}`;
+        const commentKey = generateCommentKey(keyPrefix, keyValue);
+        body += `\n\n###### ${commentKey}`;
+
         processedCommentKeys.push(commentKey);
 
         const existingComment = keyedExistingReviewComments[commentKey];
@@ -296,6 +317,7 @@ async function addFileComments(
     // Delete any comments that are no longer needed
     for (const [key, comment] of Object.entries(keyedExistingReviewComments)) {
         if (processedCommentKeys.includes(key)) continue;
+
         core.info(
             `Deleting comment for file: ${comment.path} with key: ${key}`,
         );
@@ -316,6 +338,7 @@ async function addSummaryComment(
 
     const { octokit, context } = runInfo;
 
+    // Generate the pull request summary message
     let summary =
         `## Pyright Summary \n` +
         `**📝 Files Analyzed**: ${report.summary.filesAnalyzed}\n`;
@@ -327,22 +350,23 @@ async function addSummaryComment(
     if (report.summary.errorCount === 0 && report.summary.warningCount === 0)
         summary += `✅ No errors or warnings found.`;
 
-    const summaryKey = generateCommentKey(
-        "pyright-summary",
-        pullRequest.number,
-    );
-    summary += `\n\n###### [diagnostic-summary-key:${summaryKey}]`;
+    const keyPrefix = "diagnostic-summary-key";
+    const keyValue = `${pullRequest.number}`;
+    const summaryKey = generateCommentKey(keyPrefix, keyValue);
+    summary += `\n\n###### ${summaryKey}`;
 
     const { data: existingComments } = await octokit.rest.issues.listComments({
         owner: context.repo.owner,
         repo: context.repo.repo,
         issue_number: pullRequest.number,
     });
+
+    // Create or update the comment
     const existingSummaryComment = existingComments.find((comment) => {
         if (!comment.user) return false;
         if (comment.user.login !== "github-actions[bot]") return false;
         if (!comment.body) return false;
-        const key = parseSummaryCommentKey(comment.body);
+        const key = findCommentKeyValue(comment.body, keyPrefix);
         return key === summaryKey;
     });
 
@@ -364,4 +388,13 @@ async function addSummaryComment(
         issue_number: context.issue.number,
         body: summary,
     });
+
+    // Fail the action if the option is set
+    if (!runInfo.options.failOnIssueIncrease) return;
+
+    if (report.summary.errorCount > 0 || report.summary.warningCount > 0) {
+        core.setFailed(
+            `Pyright found ${report.summary.errorCount} errors and ${report.summary.warningCount} warnings.`,
+        );
+    }
 }
