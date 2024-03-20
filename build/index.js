@@ -31550,11 +31550,10 @@ async function commentOnPR(runInfo, report, pullRequest) {
   for (const [relativePath, fileDiagnostics] of Object.entries(
     diagnosticsByFile
   )) {
-    const diagnosticCount = fileDiagnostics.length;
     let body = "<details>";
     body += `
-<summary>${diagnosticCount} ${pluralize(
-      diagnosticCount,
+<summary>${pluralize(
+      fileDiagnostics.length,
       "Issue",
       "Issues"
     )}</summary>

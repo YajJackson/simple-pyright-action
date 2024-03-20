@@ -147,10 +147,9 @@ async function commentOnPR(
     for (const [relativePath, fileDiagnostics] of Object.entries(
         diagnosticsByFile,
     )) {
-        const diagnosticCount = fileDiagnostics.length;
         let body = "<details>";
-        body += `\n<summary>${diagnosticCount} ${pluralize(
-            diagnosticCount,
+        body += `\n<summary>${pluralize(
+            fileDiagnostics.length,
             "Issue",
             "Issues",
         )}</summary>\n\n`;
