@@ -147,7 +147,7 @@ async function addBaseComparisonComment(
     comparisonMessage += `| --- | :--: | :--: | :--: |\n`;
     comparisonMessage += `| base | ${baseReport.summary.filesAnalyzed} | ${baseReport.summary.warningCount} | ${baseReport.summary.errorCount} |\n`;
     comparisonMessage += `| head | ${headReport.summary.filesAnalyzed} | ${headReport.summary.warningCount} | ${headReport.summary.errorCount} |\n`;
-    comparisonMessage += `| result | ${fileDiffIcon} ${fileDiff} | ${warningDiffIcon} ${warningDiff} | ${errorDiffIcon} ${errorDiff} |\n`;
+    comparisonMessage += `| diff | ${fileDiffIcon} ${fileDiff} | ${warningDiffIcon} ${warningDiff} | ${errorDiffIcon} ${errorDiff} |\n`;
 
     const baseSummaryKey = generateCommentKey(
         "pyright-base-summary",

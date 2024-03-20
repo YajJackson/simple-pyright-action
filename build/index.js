@@ -31561,7 +31561,7 @@ async function addBaseComparisonComment(pullRequest) {
 `;
   comparisonMessage += `| head | ${headReport.summary.filesAnalyzed} | ${headReport.summary.warningCount} | ${headReport.summary.errorCount} |
 `;
-  comparisonMessage += `| result | ${fileDiffIcon} ${fileDiff} | ${warningDiffIcon} ${warningDiff} | ${errorDiffIcon} ${errorDiff} |
+  comparisonMessage += `| diff | ${fileDiffIcon} ${fileDiff} | ${warningDiffIcon} ${warningDiff} | ${errorDiffIcon} ${errorDiff} |
 `;
   const baseSummaryKey = generateCommentKey(
     "pyright-base-summary",
