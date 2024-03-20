@@ -114,19 +114,21 @@ async function commentOnPR(
         const body =
             `**Pyright Warning/Error**\n` + `Message: ${diagnostic.message}`;
 
-        core.info("Creating comment: " + body);
+        const relativePath = getRelativePath(
+            diagnostic.file,
+            pullRequest.base.repo.full_name,
+        );
+
+        core.info("Creating comment for file: " + relativePath);
         await octokit.rest.pulls.createReviewComment({
             owner: context.repo.owner,
             repo: context.repo.repo,
             pull_number: context.issue.number,
-            body,
             commit_id: pullRequest.head.sha,
-            path: getRelativePath(
-                diagnostic.file,
-                pullRequest.base.repo.full_name,
-            ),
+            path: relativePath,
+            side: "RIGHT",
             line: diagnostic.range.start.line,
-            position: diagnostic.range.start.character,
+            body,
         });
     }
 

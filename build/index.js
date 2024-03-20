@@ -17754,12 +17754,12 @@ var require_lib = __commonJS({
             throw new Error("Client has already been disposed.");
           }
           const parsedUrl = new URL(requestUrl);
-          let info2 = this._prepareRequest(verb, parsedUrl, headers);
+          let info3 = this._prepareRequest(verb, parsedUrl, headers);
           const maxTries = this._allowRetries && RetryableHttpVerbs.includes(verb) ? this._maxRetries + 1 : 1;
           let numTries = 0;
           let response;
           do {
-            response = yield this.requestRaw(info2, data);
+            response = yield this.requestRaw(info3, data);
             if (response && response.message && response.message.statusCode === HttpCodes.Unauthorized) {
               let authenticationHandler;
               for (const handler2 of this.handlers) {
@@ -17769,7 +17769,7 @@ var require_lib = __commonJS({
                 }
               }
               if (authenticationHandler) {
-                return authenticationHandler.handleAuthentication(this, info2, data);
+                return authenticationHandler.handleAuthentication(this, info3, data);
               } else {
                 return response;
               }
@@ -17792,8 +17792,8 @@ var require_lib = __commonJS({
                   }
                 }
               }
-              info2 = this._prepareRequest(verb, parsedRedirectUrl, headers);
-              response = yield this.requestRaw(info2, data);
+              info3 = this._prepareRequest(verb, parsedRedirectUrl, headers);
+              response = yield this.requestRaw(info3, data);
               redirectsRemaining--;
             }
             if (!response.message.statusCode || !HttpResponseRetryCodes.includes(response.message.statusCode)) {
@@ -17822,7 +17822,7 @@ var require_lib = __commonJS({
        * @param info
        * @param data
        */
-      requestRaw(info2, data) {
+      requestRaw(info3, data) {
         return __awaiter(this, void 0, void 0, function* () {
           return new Promise((resolve, reject) => {
             function callbackForResult(err, res) {
@@ -17834,7 +17834,7 @@ var require_lib = __commonJS({
                 resolve(res);
               }
             }
-            this.requestRawWithCallback(info2, data, callbackForResult);
+            this.requestRawWithCallback(info3, data, callbackForResult);
           });
         });
       }
@@ -17844,12 +17844,12 @@ var require_lib = __commonJS({
        * @param data
        * @param onResult
        */
-      requestRawWithCallback(info2, data, onResult) {
+      requestRawWithCallback(info3, data, onResult) {
         if (typeof data === "string") {
-          if (!info2.options.headers) {
-            info2.options.headers = {};
+          if (!info3.options.headers) {
+            info3.options.headers = {};
           }
-          info2.options.headers["Content-Length"] = Buffer.byteLength(data, "utf8");
+          info3.options.headers["Content-Length"] = Buffer.byteLength(data, "utf8");
         }
         let callbackCalled = false;
         function handleResult(err, res) {
@@ -17858,7 +17858,7 @@ var require_lib = __commonJS({
             onResult(err, res);
           }
         }
-        const req = info2.httpModule.request(info2.options, (msg) => {
+        const req = info3.httpModule.request(info3.options, (msg) => {
           const res = new HttpClientResponse(msg);
           handleResult(void 0, res);
         });
@@ -17870,7 +17870,7 @@ var require_lib = __commonJS({
           if (socket) {
             socket.end();
           }
-          handleResult(new Error(`Request timeout: ${info2.options.path}`));
+          handleResult(new Error(`Request timeout: ${info3.options.path}`));
         });
         req.on("error", function(err) {
           handleResult(err);
@@ -17906,27 +17906,27 @@ var require_lib = __commonJS({
         return this._getProxyAgentDispatcher(parsedUrl, proxyUrl);
       }
       _prepareRequest(method, requestUrl, headers) {
-        const info2 = {};
-        info2.parsedUrl = requestUrl;
-        const usingSsl = info2.parsedUrl.protocol === "https:";
-        info2.httpModule = usingSsl ? https : http;
+        const info3 = {};
+        info3.parsedUrl = requestUrl;
+        const usingSsl = info3.parsedUrl.protocol === "https:";
+        info3.httpModule = usingSsl ? https : http;
         const defaultPort = usingSsl ? 443 : 80;
-        info2.options = {};
-        info2.options.host = info2.parsedUrl.hostname;
-        info2.options.port = info2.parsedUrl.port ? parseInt(info2.parsedUrl.port) : defaultPort;
-        info2.options.path = (info2.parsedUrl.pathname || "") + (info2.parsedUrl.search || "");
-        info2.options.method = method;
-        info2.options.headers = this._mergeHeaders(headers);
+        info3.options = {};
+        info3.options.host = info3.parsedUrl.hostname;
+        info3.options.port = info3.parsedUrl.port ? parseInt(info3.parsedUrl.port) : defaultPort;
+        info3.options.path = (info3.parsedUrl.pathname || "") + (info3.parsedUrl.search || "");
+        info3.options.method = method;
+        info3.options.headers = this._mergeHeaders(headers);
         if (this.userAgent != null) {
-          info2.options.headers["user-agent"] = this.userAgent;
+          info3.options.headers["user-agent"] = this.userAgent;
         }
-        info2.options.agent = this._getAgent(info2.parsedUrl);
+        info3.options.agent = this._getAgent(info3.parsedUrl);
         if (this.handlers) {
           for (const handler2 of this.handlers) {
-            handler2.prepareRequest(info2.options);
+            handler2.prepareRequest(info3.options);
           }
         }
-        return info2;
+        return info3;
       }
       _mergeHeaders(headers) {
         if (this.requestOptions && this.requestOptions.headers) {
@@ -18787,10 +18787,10 @@ Support boolean input list: \`true | True | TRUE | false | False | FALSE\``);
       command_1.issueCommand("notice", utils_1.toCommandProperties(properties), message instanceof Error ? message.toString() : message);
     }
     exports2.notice = notice;
-    function info2(message) {
+    function info3(message) {
       process.stdout.write(message + os.EOL);
     }
-    exports2.info = info2;
+    exports2.info = info3;
     function startGroup(name) {
       command_1.issue("group", name);
     }
@@ -29034,7 +29034,7 @@ var require_aggregate_error = __commonJS({
 });
 
 // src/action.ts
-var core = __toESM(require_core());
+var core2 = __toESM(require_core());
 var github = __toESM(require_github());
 var import_exec = __toESM(require_exec());
 
@@ -30114,7 +30114,9 @@ function parseReport(v) {
 }
 
 // src/helpers.ts
+var core = __toESM(require_core());
 var getRelativePath = (fullPath, repo) => {
+  core.info(`Getting relative path for Full path: ${fullPath} repo: ${repo}`);
   const endOfRepoNameIndex = fullPath.indexOf(repo) + repo.length;
   return fullPath.slice(endOfRepoNameIndex + 1);
 };
@@ -30321,11 +30323,11 @@ var import_light = __toESM(require_light());
 init_dist_src2();
 async function wrapRequest(state, octokit, request2, options) {
   const limiter = new import_light.default();
-  limiter.on("failed", function(error, info2) {
+  limiter.on("failed", function(error, info3) {
     const maxRetries = ~~error.request.request.retries;
     const after = ~~error.request.request.retryAfter;
-    options.request.retryCount = info2.retryCount + 1;
-    if (maxRetries > info2.retryCount) {
+    options.request.retryCount = info3.retryCount + 1;
+    if (maxRetries > info3.retryCount) {
       return after * state.retryAfterBaseValue;
     }
   });
@@ -30530,8 +30532,8 @@ function throttling(octokit, octokitOptions) {
     "error",
     (e) => octokit.log.warn("Error in throttling-plugin limit handler", e)
   );
-  state.retryLimiter.on("failed", async function(error, info2) {
-    const [state2, request2, options] = info2.args;
+  state.retryLimiter.on("failed", async function(error, info3) {
+    const [state2, request2, options] = info3.args;
     const { pathname } = new URL(options.url, "http://github.test");
     const shouldRetryGraphQL = pathname.startsWith("/graphql") && error.status !== 401;
     if (!(shouldRetryGraphQL || error.status === 403)) {
@@ -31412,20 +31414,20 @@ async function run() {
       runInfo,
       pullRequestData
     );
-    core.info("pythonFiles: " + JSON.stringify(pythonFiles));
+    core2.info("pythonFiles: " + JSON.stringify(pythonFiles));
     if (pythonFiles.length === 0) {
-      core.info("No Python files have changed.");
+      core2.info("No Python files have changed.");
       return;
     }
     await installPyright();
     const pyrightReport = await runPyright(pythonFiles);
     await commentOnPR(runInfo, pyrightReport, pullRequestData);
   } catch (error) {
-    core.setFailed(`Action failed with error: ${error}`);
+    core2.setFailed(`Action failed with error: ${error}`);
   }
 }
 var getRunInfo = () => {
-  const token = core.getInput("github-token", { required: true });
+  const token = core2.getInput("github-token", { required: true });
   const octokit = new Octokit2({ auth: token });
   const context2 = github.context;
   return { token, octokit, context: context2 };
@@ -31446,7 +31448,7 @@ async function getPullRequestData(runInfo) {
     repo: context2.repo.repo,
     pull_number: context2.issue.number
   };
-  core.info("requestParams: " + JSON.stringify(requestParams));
+  core2.info("requestParams: " + JSON.stringify(requestParams));
   const { data: pullRequestData } = await octokit.rest.pulls.get(requestParams);
   return pullRequestData;
 }
@@ -31464,15 +31466,15 @@ async function runPyright(files) {
     },
     ignoreReturnCode: true
   };
-  core.info("Running: " + pyrightCommand);
+  core2.info("Running: " + pyrightCommand);
   await (0, import_exec.exec)(pyrightCommand, [], options);
-  core.info("Pyright output: " + output);
+  core2.info("Pyright output: " + output);
   return parseReport(JSON.parse(output));
 }
 async function commentOnPR(runInfo, report, pullRequest) {
   const diagnostics = report.generalDiagnostics;
   if (diagnostics.length === 0) {
-    core.info("No issues found by Pyright.");
+    core2.info("No issues found by Pyright.");
     return;
   }
   const { octokit, context: context2 } = runInfo;
@@ -31481,22 +31483,23 @@ async function commentOnPR(runInfo, report, pullRequest) {
       continue;
     const body = `**Pyright Warning/Error**
 Message: ${diagnostic.message}`;
-    core.info("Creating comment: " + body);
+    const relativePath = getRelativePath(
+      diagnostic.file,
+      pullRequest.base.repo.full_name
+    );
+    core2.info("Creating comment for file: " + relativePath);
     await octokit.rest.pulls.createReviewComment({
       owner: context2.repo.owner,
       repo: context2.repo.repo,
       pull_number: context2.issue.number,
-      body,
       commit_id: pullRequest.head.sha,
-      path: getRelativePath(
-        diagnostic.file,
-        pullRequest.base.repo.full_name
-      ),
+      path: relativePath,
+      side: "RIGHT",
       line: diagnostic.range.start.line,
-      position: diagnostic.range.start.character
+      body
     });
   }
-  core.info("Creating summary comment.");
+  core2.info("Creating summary comment.");
   const summary = `## Pyright Summary 
 **Errors**: ${report.summary.errorCount}
 **Warnings**: ${report.summary.warningCount}`;
