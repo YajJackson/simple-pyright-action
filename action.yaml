@@ -1,14 +1,14 @@
 name: "Simple Pyright Action"
-description: "Run Pyright on your Python pull requests."
+description: "Run Pyright on your python pull requests."
 author: "Jay Jackson"
 branding:
     icon: "code"
     color: "green"
 
 inputs:
-  github-token:
-    description: 'GitHub Token'
-    required: true
+    github-token:
+        description: "GitHub Token"
+        required: true
 
 runs:
     using: "node20"

@@ -91,13 +91,9 @@ async function commentOnPR(
     report: Report,
     pullRequest: Awaited<ReturnType<typeof getPullRequestData>>,
 ) {
-    const diagnostics = report.generalDiagnostics;
-    if (diagnostics.length === 0) {
-        core.info("No issues found by Pyright.");
-        return;
-    }
-
     const { octokit, context } = runInfo;
+
+    const diagnostics = report.generalDiagnostics;
 
     // Group diagnostics by relative path
     const diagnosticsByFile: { [key: string]: Diagnostic[] } = {};

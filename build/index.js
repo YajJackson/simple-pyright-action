@@ -31497,12 +31497,8 @@ async function runPyright(files) {
   return parseReport(JSON.parse(output));
 }
 async function commentOnPR(runInfo, report, pullRequest) {
-  const diagnostics = report.generalDiagnostics;
-  if (diagnostics.length === 0) {
-    core.info("No issues found by Pyright.");
-    return;
-  }
   const { octokit, context: context2 } = runInfo;
+  const diagnostics = report.generalDiagnostics;
   const diagnosticsByFile = {};
   for (const diagnostic of diagnostics) {
     if (diagnostic.range === void 0)
