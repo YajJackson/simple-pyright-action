@@ -136,7 +136,6 @@ async function commentOnPR(
             "Creating comment for file: " + JSON.stringify(commentParams),
         );
         await octokit.rest.pulls.createReviewComment({
-            ...commentParams,
             owner: context.repo.owner,
             repo: context.repo.repo,
             pull_number: context.issue.number,
@@ -144,7 +143,6 @@ async function commentOnPR(
             path: relativePath,
             side: "RIGHT",
             subject_type: "file",
-            line: diagnostic.range.end.line,
             body,
         });
     }

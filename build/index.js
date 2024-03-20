@@ -31513,7 +31513,6 @@ Message: ${diagnostic.message}`;
       "Creating comment for file: " + JSON.stringify(commentParams)
     );
     await octokit.rest.pulls.createReviewComment({
-      ...commentParams,
       owner: context2.repo.owner,
       repo: context2.repo.repo,
       pull_number: context2.issue.number,
@@ -31521,7 +31520,6 @@ Message: ${diagnostic.message}`;
       path: relativePath,
       side: "RIGHT",
       subject_type: "file",
-      line: diagnostic.range.end.line,
       body
     });
   }
