@@ -29,7 +29,7 @@ export async function run() {
         try {
             pyrightReport = await runPyright(pythonFiles);
         } catch {
-            core.info("Pyright failed, trying alternate method")
+            core.info("Pyright failed, trying alternate method");
             pyrightReport = await runPyrightAlternate(pythonFiles);
         }
         await commentOnPR(runInfo, pyrightReport, pullRequestData);
@@ -86,29 +86,45 @@ async function installPyright() {
 
 async function runPyright(files: string[]): Promise<Report> {
     const pyrightOutput = "pyright_output.json";
-    await exec(`pyright --outputjson ${files.join(" ")} > ${pyrightOutput}`);
+    const pyrightCommand = `pyright --outputjson ${files.join(" ")}`;
+
+    let output = "";
+    const options = {
+        listeners: {
+            stdout: (data) => {
+                output += data.toString();
+            },
+        },
+    };
+
+    await exec(pyrightCommand, [], options);
+    fs.writeFileSync(pyrightOutput, output);
     core.info("Wrote Pyright results to: " + pyrightOutput);
-    const output = fs.readFileSync(pyrightOutput, "utf8");
-    core.info("Pyright output: " + output);
-    // fs.unlinkSync(pyrightOutput);
     return parseReport(JSON.parse(output));
 }
 
 async function runPyrightAlternate(files: string[]): Promise<Report> {
-    const pyrightArgs = ["npx", "pyright", "--outputjson", ...files];
-    const { status, stdout } = cp.spawnSync(process.execPath, pyrightArgs, {
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "inherit"],
-        maxBuffer: 100 * 1024 * 1024,
-    });
+    const pyrightCommand = `npx pyright --outputjson ${files.join(" ")}`;
+    const { stdout, stderr, status } = cp.spawnSync(
+        "sh",
+        ["-c", pyrightCommand],
+        {
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "pipe"],
+            maxBuffer: 100 * 1024 * 1024,
+        },
+    );
 
-    if (!stdout.trim()) {
-        core.setFailed(`Exit code ${status!}`);
-        throw "pyright failed";
+    if (status !== 0) {
+        core.error(`Pyright failed with status ${status}: ${stderr}`);
+        throw new Error("Pyright alternate method failed");
     }
 
-    const report = parseReport(JSON.parse(stdout));
-    return report;
+    if (!stdout.trim()) {
+        throw new Error("No output from Pyright");
+    }
+
+    return parseReport(JSON.parse(stdout));
 }
 
 async function commentOnPR(
