@@ -25,8 +25,13 @@ export async function run() {
         }
 
         await installPyright();
-        // const pyrightReport = await runPyright(pythonFiles);
-        const pyrightReport = await runPyrightAlternate(pythonFiles);
+        let pyrightReport: Report;
+        try {
+            pyrightReport = await runPyright(pythonFiles);
+        } catch {
+            core.info("Pyright failed, trying alternate method")
+            pyrightReport = await runPyrightAlternate(pythonFiles);
+        }
         await commentOnPR(runInfo, pyrightReport, pullRequestData);
     } catch (error) {
         core.setFailed(`Action failed with error: ${error}`);
@@ -82,13 +87,15 @@ async function installPyright() {
 async function runPyright(files: string[]): Promise<Report> {
     const pyrightOutput = "pyright_output.json";
     await exec(`pyright --outputjson ${files.join(" ")} > ${pyrightOutput}`);
+    core.info("Wrote Pyright results to: " + pyrightOutput);
     const output = fs.readFileSync(pyrightOutput, "utf8");
-    fs.unlinkSync(pyrightOutput);
-    return parseReport(output);
+    core.info("Pyright output: " + output);
+    // fs.unlinkSync(pyrightOutput);
+    return parseReport(JSON.parse(output));
 }
 
 async function runPyrightAlternate(files: string[]): Promise<Report> {
-    const pyrightArgs = ["pyright", "--outputjson", ...files];
+    const pyrightArgs = ["npx", "pyright", "--outputjson", ...files];
     const { status, stdout } = cp.spawnSync(process.execPath, pyrightArgs, {
         encoding: "utf8",
         stdio: ["ignore", "pipe", "inherit"],
