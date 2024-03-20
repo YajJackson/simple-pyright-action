@@ -31474,9 +31474,11 @@ async function run() {
     const pyrightReport = await runPyright(pythonFiles);
     if (runInfo.options.includeFileComments)
       await addFileComments(runInfo, pyrightReport, pullRequestData);
-    await addSummaryComment(runInfo, pyrightReport, pullRequestData);
-    if (runInfo.options.includeBaseComparison)
+    if (runInfo.options.includeBaseComparison) {
       await addBaseComparisonComment(pullRequestData);
+      return;
+    }
+    await addSummaryComment(runInfo, pyrightReport, pullRequestData);
   } catch (error) {
     core.setFailed(`Action failed with error: ${error}`);
   }
@@ -31544,9 +31546,12 @@ async function addBaseComparisonComment(pullRequest) {
   await checkoutBaseBranch(pullRequest);
   const baseReport = await runPyright();
   const fileDiff = headReport.summary.filesAnalyzed - baseReport.summary.filesAnalyzed;
+  const fileDiffIcon = fileDiff == 0 ? "-" : fileDiff > 0 ? "\u2B06\uFE0F" : "\u2B07\uFE0F";
   const warningDiff = headReport.summary.warningCount - baseReport.summary.warningCount;
+  const warningDiffIcon = warningDiff <= 0 ? "\u2705" : "\u274C";
   const errorDiff = headReport.summary.errorCount - baseReport.summary.errorCount;
-  let comparisonMessage = `## Type Stats
+  const errorDiffIcon = errorDiff <= 0 ? "\u2705" : "\u274C";
+  let comparisonMessage = `## Pyright Summary
 `;
   comparisonMessage += `| | files | warnings | errors |
 `;
@@ -31556,7 +31561,7 @@ async function addBaseComparisonComment(pullRequest) {
 `;
   comparisonMessage += `| head | ${headReport.summary.filesAnalyzed} | ${headReport.summary.warningCount} | ${headReport.summary.errorCount} |
 `;
-  comparisonMessage += `| result | ${fileDiff >= 0 ? "\u2B06\uFE0F" : "\u2B07\uFE0F"} ${fileDiff} | ${warningDiff >= 0 ? "\u2705" : "\u274C"} ${warningDiff} | ${errorDiff >= 0 ? "\u2705" : "\u274C"} ${errorDiff} |
+  comparisonMessage += `| result | ${fileDiffIcon} ${fileDiff} | ${warningDiffIcon} ${warningDiff} | ${errorDiffIcon} ${errorDiff} |
 `;
   const baseSummaryKey = generateCommentKey(
     "pyright-base-summary",

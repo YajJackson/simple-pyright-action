@@ -31,10 +31,13 @@ export async function run() {
 
         if (runInfo.options.includeFileComments)
             await addFileComments(runInfo, pyrightReport, pullRequestData);
-        await addSummaryComment(runInfo, pyrightReport, pullRequestData);
 
-        if (runInfo.options.includeBaseComparison)
+        if (runInfo.options.includeBaseComparison) {
             await addBaseComparisonComment(pullRequestData);
+            return;
+        }
+
+        await addSummaryComment(runInfo, pyrightReport, pullRequestData);
     } catch (error) {
         core.setFailed(`Action failed with error: ${error}`);
     }
@@ -132,20 +135,19 @@ async function addBaseComparisonComment(
 
     const fileDiff =
         headReport.summary.filesAnalyzed - baseReport.summary.filesAnalyzed;
+    const fileDiffIcon = fileDiff == 0 ? "-" : fileDiff > 0 ? "⬆️" : "⬇️";
     const warningDiff =
         headReport.summary.warningCount - baseReport.summary.warningCount;
+    const warningDiffIcon = warningDiff <= 0 ? "✅" : "❌";
     const errorDiff =
         headReport.summary.errorCount - baseReport.summary.errorCount;
-    let comparisonMessage = `## Type Stats\n`;
+    const errorDiffIcon = errorDiff <= 0 ? "✅" : "❌";
+    let comparisonMessage = `## Pyright Summary\n`;
     comparisonMessage += `| | files | warnings | errors |\n`;
     comparisonMessage += `| --- | :--: | :--: | :--: |\n`;
     comparisonMessage += `| base | ${baseReport.summary.filesAnalyzed} | ${baseReport.summary.warningCount} | ${baseReport.summary.errorCount} |\n`;
     comparisonMessage += `| head | ${headReport.summary.filesAnalyzed} | ${headReport.summary.warningCount} | ${headReport.summary.errorCount} |\n`;
-    comparisonMessage += `| result | ${
-        fileDiff >= 0 ? "⬆️" : "⬇️"
-    } ${fileDiff} | ${warningDiff >= 0 ? "✅" : "❌"} ${warningDiff} | ${
-        errorDiff >= 0 ? "✅" : "❌"
-    } ${errorDiff} |\n`;
+    comparisonMessage += `| result | ${fileDiffIcon} ${fileDiff} | ${warningDiffIcon} ${warningDiff} | ${errorDiffIcon} ${errorDiff} |\n`;
 
     const baseSummaryKey = generateCommentKey(
         "pyright-base-summary",
