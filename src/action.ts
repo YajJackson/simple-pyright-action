@@ -1,19 +1,15 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
-import { exec } from "@actions/exec";
+import { ExecOptions, exec } from "@actions/exec";
 import * as cp from "node:child_process";
-import * as fs from "fs";
 import { Report, parseReport } from "./types";
 import { getRelativePath } from "./helpers";
 import { Octokit } from "octokit";
 
 export async function run() {
     try {
-        core.info("Starting Pyright Action");
         const runInfo = getRunInfo();
-        core.info("runInfo: " + JSON.stringify(runInfo));
         const pullRequestData = await getPullRequestData(runInfo);
-        core.info("pullRequestData: " + JSON.stringify(pullRequestData));
         const pythonFiles = await getChangedPythonFiles(
             runInfo,
             pullRequestData,
@@ -35,7 +31,6 @@ export async function run() {
 const getRunInfo = () => {
     const token = core.getInput("github-token", { required: true });
     const octokit = new Octokit({ auth: token });
-    core.info("Initialized octokit");
     const context = github.context;
     return { token, octokit, context };
 };
@@ -82,42 +77,19 @@ async function runPyright(files: string[]): Promise<Report> {
     const pyrightCommand = `pyright --outputjson ${files.join(" ")}`;
 
     let output = "";
-    const options = {
+    const options: ExecOptions = {
         listeners: {
             stdout: (data) => {
                 output += data.toString();
             },
         },
+        ignoreReturnCode: true,
     };
 
     core.info("Running: " + pyrightCommand);
     await exec(pyrightCommand, [], options);
     core.info("Pyright output: " + output);
     return parseReport(JSON.parse(output));
-}
-
-async function runPyrightAlternate(files: string[]): Promise<Report> {
-    const pyrightCommand = `npx pyright --outputjson ${files.join(" ")}`;
-    const { stdout, stderr, status } = cp.spawnSync(
-        "sh",
-        ["-c", pyrightCommand],
-        {
-            encoding: "utf8",
-            stdio: ["ignore", "pipe", "pipe"],
-            maxBuffer: 100 * 1024 * 1024,
-        },
-    );
-
-    if (status !== 0) {
-        core.error(`Pyright failed with status ${status}: ${stderr}`);
-        throw new Error("Pyright alternate method failed");
-    }
-
-    if (!stdout.trim()) {
-        throw new Error("No output from Pyright");
-    }
-
-    return parseReport(JSON.parse(stdout));
 }
 
 async function commentOnPR(
@@ -142,6 +114,7 @@ async function commentOnPR(
         const body =
             `**Pyright Warning/Error**\n` + `Message: ${diagnostic.message}`;
 
+        core.info("Creating comment: " + body);
         await octokit.rest.pulls.createReviewComment({
             owner: context.repo.owner,
             repo: context.repo.repo,
@@ -156,6 +129,7 @@ async function commentOnPR(
     }
 
     // Create a comment on the PR with a summary of the issues
+    core.info("Creating summary comment.");
     const summary =
         `## Pyright Summary \n` +
         `**Errors**: ${report.summary.errorCount}\n` +
