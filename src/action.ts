@@ -118,6 +118,9 @@ async function commentOnPR(
             pullRequest.base.repo.name,
         );
 
+        // This can throw: {"resource":"PullRequestReviewComment","code":"custom","field":"pull_request_review_thread.line","message":"pull_request_review_thread.line must be part of the diff"}
+
+        // https://github.com/YajJackson/example-python-project/pull/2/review_comment/create
         core.info("Creating comment for file: " + relativePath);
         await octokit.rest.pulls.createReviewComment({
             owner: context.repo.owner,
@@ -126,7 +129,8 @@ async function commentOnPR(
             commit_id: pullRequest.head.sha,
             path: relativePath,
             side: "RIGHT",
-            line: diagnostic.range.start.line,
+            subject_type: "file",
+            line: diagnostic.range.end.line,
             body,
         });
     }

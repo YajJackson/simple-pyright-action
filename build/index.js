@@ -31506,7 +31506,8 @@ Message: ${diagnostic.message}`;
       commit_id: pullRequest.head.sha,
       path: relativePath,
       side: "RIGHT",
-      line: diagnostic.range.start.line,
+      subject_type: "file",
+      line: diagnostic.range.end.line,
       body
     });
   }
