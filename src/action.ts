@@ -6,6 +6,7 @@ import {
     diagnosticToString,
     generateCommentKey,
     getRelativePath,
+    parseCommentKey,
 } from "./helpers";
 import { Octokit } from "octokit";
 
@@ -110,16 +111,16 @@ async function commentOnPR(
         [key: string]: (typeof existingReviewComments)[0];
     };
 
-    const keyRegex = /\[diagnostic-key:([^]]+)\]/;
     const keyedExistingReviewComments =
         existingReviewComments.reduce<KeyedComments>((acc, comment) => {
-            const match = comment.body.match(keyRegex);
+            if (comment.user.login !== "github-actions[bot]") return acc;
+
+            const commentKey = parseCommentKey(comment.body);
             core.info(
-                `Keying user: ${comment.user.login} comment: ${comment.id} - ${comment.body} | match: ${match}`,
+                `Keying user: ${comment.user.login} comment: ${comment.id} - ${comment.body} | key: ${commentKey}`,
             );
-            if (match) {
-                const key = match[1];
-                acc[key] = comment;
+            if (commentKey) {
+                acc[commentKey] = comment;
             }
             return acc;
         }, {});

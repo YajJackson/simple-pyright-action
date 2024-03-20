@@ -30154,8 +30154,11 @@ var generateCommentKey = (filePath, pullRequestNumber) => {
   hash.update(`${filePath}-${pullRequestNumber}`);
   return hash.digest("hex").substring(0, 16);
 };
-var exampleKey = generateCommentKey("example", 1);
-console.log({ exampleKey });
+var parseCommentKey = (input) => {
+  const regex2 = /\[diagnostic-key:([^\]]+)\]/;
+  const match = regex2.exec(input);
+  return match ? match[1] : null;
+};
 
 // node_modules/octokit/dist-web/index.js
 init_dist_web4();
@@ -31513,15 +31516,15 @@ async function commentOnPR(runInfo, report, pullRequest) {
     pull_number: pullRequest.number
     // Make sure you have the PR number correctly here
   });
-  const keyRegex = /\[diagnostic-key:([^]]+)\]/;
   const keyedExistingReviewComments = existingReviewComments.reduce((acc, comment) => {
-    const match = comment.body.match(keyRegex);
+    if (comment.user.login !== "github-actions[bot]")
+      return acc;
+    const commentKey = parseCommentKey(comment.body);
     core.info(
-      `Keying user: ${comment.user.login} comment: ${comment.id} - ${comment.body} | match: ${match}`
+      `Keying user: ${comment.user.login} comment: ${comment.id} - ${comment.body} | key: ${commentKey}`
     );
-    if (match) {
-      const key = match[1];
-      acc[key] = comment;
+    if (commentKey) {
+      acc[commentKey] = comment;
     }
     return acc;
   }, {});

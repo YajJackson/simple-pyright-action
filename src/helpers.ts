@@ -63,5 +63,22 @@ export const generateCommentKey = (
     hash.update(`${filePath}-${pullRequestNumber}`);
     return hash.digest("hex").substring(0, 16);
 };
-const exampleKey = generateCommentKey("example", 1);
-console.log({ exampleKey });
+
+export const parseCommentKey = (input: string) => {
+    const regex = /\[diagnostic-key:([^\]]+)\]/;
+    const match = regex.exec(input);
+    return match ? match[1] : null;
+};
+
+// const exampleCommentBody = `### Pyright Issues
+//
+// - main.py:10:14 - ❌ error: Expression of type \`int\` cannot be assigned to declared type \`str\`
+//   \`int\` is incompatible with \`str\` (reportAssignmentType)
+// - main.py:11:24 - ❌ error: Expression of type \`int\` cannot be assigned to declared type \`str\`
+//   \`int\` is incompatible with \`str\` (reportAssignmentType)
+//
+//
+// ###### [diagnostic-key:89be8cb1cee8ef6a]`;
+//
+// const commentKey = parseCommentKey(exampleCommentBody);
+// console.log({ commentKey });
