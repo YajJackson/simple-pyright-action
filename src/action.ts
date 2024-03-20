@@ -1,6 +1,7 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
 import { exec } from "@actions/exec";
+import * as cp from "node:child_process";
 import * as fs from "fs";
 import { Report, parseReport } from "./schema";
 import { getRelativePath } from "./helpers";
@@ -17,14 +18,15 @@ export async function run() {
             runInfo,
             pullRequestData,
         );
-        core.info("pythonFiles: " + pythonFiles.length);
+        core.info("pythonFiles: " + JSON.stringify(pythonFiles));
         if (pythonFiles.length === 0) {
             core.info("No Python files have changed.");
             return;
         }
 
         await installPyright();
-        const pyrightReport = await runPyright(pythonFiles);
+        // const pyrightReport = await runPyright(pythonFiles);
+        const pyrightReport = await runPyrightAlternate(pythonFiles);
         await commentOnPR(runInfo, pyrightReport, pullRequestData);
     } catch (error) {
         core.setFailed(`Action failed with error: ${error}`);
@@ -83,6 +85,23 @@ async function runPyright(files: string[]): Promise<Report> {
     const output = fs.readFileSync(pyrightOutput, "utf8");
     fs.unlinkSync(pyrightOutput);
     return parseReport(output);
+}
+
+async function runPyrightAlternate(files: string[]): Promise<Report> {
+    const pyrightArgs = ["pyright", "--outputjson", ...files];
+    const { status, stdout } = cp.spawnSync(process.execPath, pyrightArgs, {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "inherit"],
+        maxBuffer: 100 * 1024 * 1024,
+    });
+
+    if (!stdout.trim()) {
+        core.setFailed(`Exit code ${status!}`);
+        throw "pyright failed";
+    }
+
+    const report = parseReport(JSON.parse(stdout));
+    return report;
 }
 
 async function commentOnPR(

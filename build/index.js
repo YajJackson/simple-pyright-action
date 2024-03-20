@@ -518,7 +518,7 @@ var require_file_command = __commonJS({
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.prepareKeyValueMessage = exports2.issueFileCommand = void 0;
-    var fs2 = __importStar(require("fs"));
+    var fs = __importStar(require("fs"));
     var os = __importStar(require("os"));
     var uuid_1 = (init_esm_node(), __toCommonJS(esm_node_exports));
     var utils_1 = require_utils();
@@ -527,10 +527,10 @@ var require_file_command = __commonJS({
       if (!filePath) {
         throw new Error(`Unable to find environment variable for file command ${command}`);
       }
-      if (!fs2.existsSync(filePath)) {
+      if (!fs.existsSync(filePath)) {
         throw new Error(`Missing file at path: ${filePath}`);
       }
-      fs2.appendFileSync(filePath, `${utils_1.toCommandValue(message)}${os.EOL}`, {
+      fs.appendFileSync(filePath, `${utils_1.toCommandValue(message)}${os.EOL}`, {
         encoding: "utf8"
       });
     }
@@ -23007,12 +23007,12 @@ var require_io_util = __commonJS({
     var _a;
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.getCmdPath = exports2.tryGetExecutablePath = exports2.isRooted = exports2.isDirectory = exports2.exists = exports2.READONLY = exports2.UV_FS_O_EXLOCK = exports2.IS_WINDOWS = exports2.unlink = exports2.symlink = exports2.stat = exports2.rmdir = exports2.rm = exports2.rename = exports2.readlink = exports2.readdir = exports2.open = exports2.mkdir = exports2.lstat = exports2.copyFile = exports2.chmod = void 0;
-    var fs2 = __importStar(require("fs"));
+    var fs = __importStar(require("fs"));
     var path = __importStar(require("path"));
-    _a = fs2.promises, exports2.chmod = _a.chmod, exports2.copyFile = _a.copyFile, exports2.lstat = _a.lstat, exports2.mkdir = _a.mkdir, exports2.open = _a.open, exports2.readdir = _a.readdir, exports2.readlink = _a.readlink, exports2.rename = _a.rename, exports2.rm = _a.rm, exports2.rmdir = _a.rmdir, exports2.stat = _a.stat, exports2.symlink = _a.symlink, exports2.unlink = _a.unlink;
+    _a = fs.promises, exports2.chmod = _a.chmod, exports2.copyFile = _a.copyFile, exports2.lstat = _a.lstat, exports2.mkdir = _a.mkdir, exports2.open = _a.open, exports2.readdir = _a.readdir, exports2.readlink = _a.readlink, exports2.rename = _a.rename, exports2.rm = _a.rm, exports2.rmdir = _a.rmdir, exports2.stat = _a.stat, exports2.symlink = _a.symlink, exports2.unlink = _a.unlink;
     exports2.IS_WINDOWS = process.platform === "win32";
     exports2.UV_FS_O_EXLOCK = 268435456;
-    exports2.READONLY = fs2.constants.O_RDONLY;
+    exports2.READONLY = fs.constants.O_RDONLY;
     function exists(fsPath) {
       return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -23187,7 +23187,7 @@ var require_io = __commonJS({
     var assert_1 = require("assert");
     var path = __importStar(require("path"));
     var ioUtil = __importStar(require_io_util());
-    function cp(source, dest, options = {}) {
+    function cp2(source, dest, options = {}) {
       return __awaiter(this, void 0, void 0, function* () {
         const { force, recursive, copySourceDirectory } = readCopyOptions(options);
         const destStat = (yield ioUtil.exists(dest)) ? yield ioUtil.stat(dest) : null;
@@ -23213,7 +23213,7 @@ var require_io = __commonJS({
         }
       });
     }
-    exports2.cp = cp;
+    exports2.cp = cp2;
     function mv(source, dest, options = {}) {
       return __awaiter(this, void 0, void 0, function* () {
         if (yield ioUtil.exists(dest)) {
@@ -23676,10 +23676,10 @@ var require_toolrunner = __commonJS({
               return reject(new Error(`The cwd: ${this.options.cwd} does not exist!`));
             }
             const fileName = this._getSpawnFileName();
-            const cp = child.spawn(fileName, this._getSpawnArgs(optionsNonNull), this._getSpawnOptions(this.options, fileName));
+            const cp2 = child.spawn(fileName, this._getSpawnArgs(optionsNonNull), this._getSpawnOptions(this.options, fileName));
             let stdbuffer = "";
-            if (cp.stdout) {
-              cp.stdout.on("data", (data) => {
+            if (cp2.stdout) {
+              cp2.stdout.on("data", (data) => {
                 if (this.options.listeners && this.options.listeners.stdout) {
                   this.options.listeners.stdout(data);
                 }
@@ -23694,8 +23694,8 @@ var require_toolrunner = __commonJS({
               });
             }
             let errbuffer = "";
-            if (cp.stderr) {
-              cp.stderr.on("data", (data) => {
+            if (cp2.stderr) {
+              cp2.stderr.on("data", (data) => {
                 state.processStderr = true;
                 if (this.options.listeners && this.options.listeners.stderr) {
                   this.options.listeners.stderr(data);
@@ -23711,19 +23711,19 @@ var require_toolrunner = __commonJS({
                 });
               });
             }
-            cp.on("error", (err) => {
+            cp2.on("error", (err) => {
               state.processError = err.message;
               state.processExited = true;
               state.processClosed = true;
               state.CheckComplete();
             });
-            cp.on("exit", (code) => {
+            cp2.on("exit", (code) => {
               state.processExitCode = code;
               state.processExited = true;
               this._debug(`Exit code ${code} received from tool '${this.toolPath}'`);
               state.CheckComplete();
             });
-            cp.on("close", (code) => {
+            cp2.on("close", (code) => {
               state.processExitCode = code;
               state.processExited = true;
               state.processClosed = true;
@@ -23737,7 +23737,7 @@ var require_toolrunner = __commonJS({
               if (errbuffer.length > 0) {
                 this.emit("errline", errbuffer);
               }
-              cp.removeAllListeners();
+              cp2.removeAllListeners();
               if (error) {
                 reject(error);
               } else {
@@ -23745,10 +23745,10 @@ var require_toolrunner = __commonJS({
               }
             });
             if (this.options.input) {
-              if (!cp.stdin) {
+              if (!cp2.stdin) {
                 throw new Error("child process missing stdin");
               }
-              cp.stdin.end(this.options.input);
+              cp2.stdin.end(this.options.input);
             }
           }));
         });
@@ -29037,7 +29037,7 @@ var require_aggregate_error = __commonJS({
 var core = __toESM(require_core());
 var github = __toESM(require_github());
 var import_exec = __toESM(require_exec());
-var fs = __toESM(require("fs"));
+var cp = __toESM(require("node:child_process"));
 
 // node_modules/@badrap/valita/dist/node-mjs/index.mjs
 function joinIssues(left, right) {
@@ -31416,13 +31416,13 @@ async function run() {
       runInfo,
       pullRequestData
     );
-    core.info("pythonFiles: " + pythonFiles.length);
+    core.info("pythonFiles: " + JSON.stringify(pythonFiles));
     if (pythonFiles.length === 0) {
       core.info("No Python files have changed.");
       return;
     }
     await installPyright();
-    const pyrightReport = await runPyright(pythonFiles);
+    const pyrightReport = await runPyrightAlternate(pythonFiles);
     await commentOnPR(runInfo, pyrightReport, pullRequestData);
   } catch (error) {
     core.setFailed(`Action failed with error: ${error}`);
@@ -31458,12 +31458,19 @@ async function getPullRequestData(runInfo) {
 async function installPyright() {
   await (0, import_exec.exec)("npm", ["install", "-g", "pyright"]);
 }
-async function runPyright(files) {
-  const pyrightOutput = "pyright_output.json";
-  await (0, import_exec.exec)(`pyright --outputjson ${files.join(" ")} > ${pyrightOutput}`);
-  const output = fs.readFileSync(pyrightOutput, "utf8");
-  fs.unlinkSync(pyrightOutput);
-  return parseReport(output);
+async function runPyrightAlternate(files) {
+  const pyrightArgs = ["pyright", "--outputjson", ...files];
+  const { status, stdout } = cp.spawnSync(process.execPath, pyrightArgs, {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "inherit"],
+    maxBuffer: 100 * 1024 * 1024
+  });
+  if (!stdout.trim()) {
+    core.setFailed(`Exit code ${status}`);
+    throw "pyright failed";
+  }
+  const report = parseReport(JSON.parse(stdout));
+  return report;
 }
 async function commentOnPR(runInfo, report, pullRequest) {
   const diagnostics = report.generalDiagnostics;
