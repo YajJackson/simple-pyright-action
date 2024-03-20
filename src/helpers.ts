@@ -1,39 +1,47 @@
 import * as core from "@actions/core";
-import { assert } from "console";
+import { Diagnostic, Position, Range } from "./types";
 
 export const pluralize = (n: number, singular: string, plural: string) => {
     return `${n} ${n === 1 ? singular : plural}`;
 };
 
-export const getRelativePath = (fullPath: string, repoName: string) => {
-    core.info(
-        `Getting relative path for Full path: ${fullPath} repo: ${repoName}`,
-    );
-    // Identify the second occurrence of repoName by starting the search after the first occurrence
-    const firstOccurrenceEndIndex =
-        fullPath.indexOf(repoName) + repoName.length;
-    const secondOccurrenceStartIndex = fullPath.indexOf(
+const isEmptyPosition = (p: Position) => p.line === 0 && p.character === 0;
+
+const isEmptyRange = (r: Range) =>
+    isEmptyPosition(r.start) && isEmptyPosition(r.end);
+
+export const diagnosticToString = (diag: Diagnostic): string => {
+    let message = "";
+
+    if (diag.file) {
+        message += `${diag.file}:`;
+    }
+    if (diag.range && !isEmptyRange(diag.range)) {
+        message += `${diag.range.start.line + 1}:${
+            diag.range.start.character + 1
+        } -`;
+    }
+    message += ` ${diag.severity}: `;
+
+    message += diag.message;
+
+    if (diag.rule) {
+        message += ` (${diag.rule})`;
+    }
+
+    return message;
+};
+
+export const getRelativePath = (file: string, repoName: string) => {
+    const firstOccurrenceEndIndex = file.indexOf(repoName) + repoName.length;
+    const secondOccurrenceStartIndex = file.indexOf(
         repoName,
         firstOccurrenceEndIndex,
     );
 
     if (secondOccurrenceStartIndex === -1) {
-        core.error("Repository name not found twice in path");
-        return fullPath; // Fallback to returning fullPath or handle error as appropriate
+        return file;
     }
 
-    // Calculate the start index of the relative path, which is after the second occurrence of repoName
-    const relativePathStartIndex =
-        secondOccurrenceStartIndex + repoName.length + 1; // +1 to move past the trailing slash
-    return fullPath.slice(relativePathStartIndex);
+    return file.slice(secondOccurrenceStartIndex + repoName.length + 1);
 };
-
-// const full_path =
-//     "/home/runner/work/example-python-project/example-python-project/main.py";
-// const repo = "example-python-project";
-// const relativePath = getRelativePath(full_path, repo);
-// console.log(`Relative path: ${relativePath}`);
-// assert(
-//     relativePath === "main.py",
-//     `Expected "main.py" but got "${relativePath}"`,
-// );

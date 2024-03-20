@@ -1,8 +1,8 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
 import { ExecOptions, exec } from "@actions/exec";
-import { Report, parseReport } from "./types";
-import { getRelativePath } from "./helpers";
+import { Diagnostic, Report, parseReport } from "./types";
+import { diagnosticToString, getRelativePath } from "./helpers";
 import { Octokit } from "octokit";
 
 export async function run() {
@@ -104,37 +104,33 @@ async function commentOnPR(
 
     const { octokit, context } = runInfo;
 
+    // Group diagnostics by relative path
+    const diagnosticsByFile: { [key: string]: Diagnostic[] } = {};
     for (const diagnostic of diagnostics) {
         if (diagnostic.range === undefined) continue;
-
-        // Create comment on PR at specific line
-        // These are considered "review comments" and are shown as annotations in the PR
-        // See: https://docs.github.com/en/rest/pulls/comments?apiVersion=2022-11-28#create-a-review-comment-for-a-pull-request
-        const body =
-            `**Pyright Warning/Error**\n` + `Message: ${diagnostic.message}`;
 
         const relativePath = getRelativePath(
             diagnostic.file,
             pullRequest.base.repo.name,
         );
 
-        // This can throw: {"resource":"PullRequestReviewComment","code":"custom","field":"pull_request_review_thread.line","message":"pull_request_review_thread.line must be part of the diff"}
+        if (!diagnosticsByFile[relativePath]) {
+            diagnosticsByFile[relativePath] = [];
+        }
 
-        // https://github.com/YajJackson/example-python-project/pull/2/review_comment/create
-        const commentParams = {
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            pull_number: context.issue.number,
-            commit_id: pullRequest.head.sha,
-            path: relativePath,
-            side: "RIGHT",
-            subject_type: "file",
-            line: diagnostic.range.end.line,
-            body,
-        };
-        core.info(
-            "Creating comment for file: " + JSON.stringify(commentParams),
-        );
+        diagnosticsByFile[relativePath].push(diagnostic);
+    }
+
+    // Create a comment for each file
+    for (const [relativePath, fileDiagnostics] of Object.entries(
+        diagnosticsByFile,
+    )) {
+        let body = `### Pyright Issues\n\n`;
+
+        for (const diagnostic of fileDiagnostics) {
+            body += diagnosticToString(diagnostic) + "\n";
+        }
+
         await octokit.rest.pulls.createReviewComment({
             owner: context.repo.owner,
             repo: context.repo.repo,
@@ -151,8 +147,9 @@ async function commentOnPR(
     core.info("Creating summary comment.");
     const summary =
         `## Pyright Summary \n` +
-        `**Errors**: ${report.summary.errorCount}\n` +
-        `**Warnings**: ${report.summary.warningCount}`;
+        `**❌ Errors**: ${report.summary.errorCount}\n` +
+        `**⚠️ Warnings**: ${report.summary.warningCount}`;
+
     await octokit.rest.issues.createComment({
         owner: context.repo.owner,
         repo: context.repo.repo,
