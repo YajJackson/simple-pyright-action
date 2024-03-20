@@ -31498,8 +31498,22 @@ Message: ${diagnostic.message}`;
       diagnostic.file,
       pullRequest.base.repo.name
     );
-    core2.info("Creating comment for file: " + relativePath);
+    const commentParams = {
+      owner: context2.repo.owner,
+      repo: context2.repo.repo,
+      pull_number: context2.issue.number,
+      commit_id: pullRequest.head.sha,
+      path: relativePath,
+      side: "RIGHT",
+      subject_type: "file",
+      line: diagnostic.range.end.line,
+      body
+    };
+    core2.info(
+      "Creating comment for file: " + JSON.stringify(commentParams)
+    );
     await octokit.rest.pulls.createReviewComment({
+      ...commentParams,
       owner: context2.repo.owner,
       repo: context2.repo.repo,
       pull_number: context2.issue.number,
