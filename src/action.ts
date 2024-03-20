@@ -79,7 +79,6 @@ async function installPyright() {
 }
 
 async function runPyright(files: string[]): Promise<Report> {
-    const pyrightOutput = "pyright_output.json";
     const pyrightCommand = `pyright --outputjson ${files.join(" ")}`;
 
     let output = "";
@@ -91,9 +90,9 @@ async function runPyright(files: string[]): Promise<Report> {
         },
     };
 
+    core.info("Running: " + pyrightCommand);
     await exec(pyrightCommand, [], options);
-    fs.writeFileSync(pyrightOutput, output);
-    core.info("Wrote Pyright results to: " + pyrightOutput);
+    core.info("Pyright output: " + output);
     return parseReport(JSON.parse(output));
 }
 

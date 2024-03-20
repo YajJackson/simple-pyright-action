@@ -48,32 +48,34 @@ export function parseReport(v: unknown): Report {
 }
 
 // Example pyright output
-// {
-//     "version": "1.1.354",
-//     "time": "1710897648689",
-//     "generalDiagnostics": [
+// const example = {
+//     version: "1.1.354",
+//     time: "1710897648689",
+//     generalDiagnostics: [
 //         {
-//             "file": "/home/runner/work/example-python-project/example-python-project/main.py",
-//             "severity": "error",
-//             "message": "Expression of type \"int\" cannot be assigned to declared type \"str\"\n  \"int\" is incompatible with \"str\"",
-//             "range": {
-//                 "start": {
-//                     "line": 9,
-//                     "character": 13
+//             file: "/home/runner/work/example-python-project/example-python-project/main.py",
+//             severity: "error",
+//             message:
+//                 'Expression of type "int" cannot be assigned to declared type "str"\n  "int" is incompatible with "str"',
+//             range: {
+//                 start: {
+//                     line: 9,
+//                     character: 13,
 //                 },
-//                 "end": {
-//                     "line": 9,
-//                     "character": 21
-//                 }
+//                 end: {
+//                     line: 9,
+//                     character: 21,
+//                 },
 //             },
-//             "rule": "reportAssignmentType"
-//         }
+//             rule: "reportAssignmentType",
+//         },
 //     ],
-//     "summary": {
-//         "filesAnalyzed": 1,
-//         "errorCount": 1,
-//         "warningCount": 0,
-//         "informationCount": 0,
-//         "timeInSec": 0.337
-//     }
-// }
+//     summary: {
+//         filesAnalyzed: 1,
+//         errorCount: 1,
+//         warningCount: 0,
+//         informationCount: 0,
+//         timeInSec: 0.337,
+//     },
+// };
+// const report = parseReport(example); // ✅
