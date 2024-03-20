@@ -4,6 +4,7 @@ import { exec } from "@actions/exec";
 import * as fs from "fs";
 import { Report, parseReport } from "./schema";
 import { getRelativePath } from "./helpers";
+import { Octokit } from "octokit";
 
 export async function run() {
     try {
@@ -32,7 +33,7 @@ export async function run() {
 
 const getRunInfo = () => {
     const token = core.getInput("github-token", { required: true });
-    const octokit = github.getOctokit(token);
+    const octokit = new Octokit({ auth: token });
     core.info("Initialized octokit");
     const context = github.context;
     return { token, octokit, context };
@@ -60,11 +61,15 @@ async function getChangedPythonFiles(
 async function getPullRequestData(runInfo: ReturnType<typeof getRunInfo>) {
     const { octokit, context } = runInfo;
 
-    const { data: pullRequestData } = await octokit.rest.pulls.get({
+    const requestParams = {
         owner: context.repo.owner,
         repo: context.repo.repo,
         pull_number: context.issue.number,
-    });
+    };
+    core.info("requestParams: " + JSON.stringify(requestParams));
+
+    const { data: pullRequestData } =
+        await octokit.rest.pulls.get(requestParams);
     return pullRequestData;
 }
 
