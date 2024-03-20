@@ -10,24 +10,33 @@ const isEmptyPosition = (p: Position) => p.line === 0 && p.character === 0;
 const isEmptyRange = (r: Range) =>
     isEmptyPosition(r.start) && isEmptyPosition(r.end);
 
-export const diagnosticToString = (diag: Diagnostic): string => {
-    let message = "";
-
-    if (diag.file) {
-        message += `${diag.file}:`;
+const getSeverityIcon = (severity: string) => {
+    switch (severity) {
+        case "error":
+            return "❌";
+        case "warning":
+            return "⚠️";
+        default:
+            return "";
     }
-    if (diag.range && !isEmptyRange(diag.range)) {
+};
+
+export const diagnosticToString = (
+    diag: Diagnostic,
+    fileName: string,
+): string => {
+    let message = `${fileName}:`;
+
+    if (diag.range && !isEmptyRange(diag.range))
         message += `${diag.range.start.line + 1}:${
             diag.range.start.character + 1
         } -`;
-    }
-    message += ` ${diag.severity}: `;
 
-    message += diag.message;
+    message += ` ${getSeverityIcon(diag.severity)} ${diag.severity}: `;
 
-    if (diag.rule) {
-        message += ` (${diag.rule})`;
-    }
+    message += diag.message.replace(/"/g, "`");
+
+    if (diag.rule) message += ` (${diag.rule})`;
 
     return message;
 };

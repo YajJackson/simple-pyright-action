@@ -30106,7 +30106,8 @@ var Report = object({
   summary: object({
     errorCount: number(),
     warningCount: number(),
-    informationCount: number()
+    informationCount: number(),
+    filesAnalyzed: number()
   })
 });
 function parseReport(v) {
@@ -30116,19 +30117,24 @@ function parseReport(v) {
 // src/helpers.ts
 var isEmptyPosition = (p) => p.line === 0 && p.character === 0;
 var isEmptyRange = (r) => isEmptyPosition(r.start) && isEmptyPosition(r.end);
-var diagnosticToString = (diag) => {
-  let message = "";
-  if (diag.file) {
-    message += `${diag.file}:`;
+var getSeverityIcon = (severity) => {
+  switch (severity) {
+    case "error":
+      return "\u274C";
+    case "warning":
+      return "\u26A0\uFE0F";
+    default:
+      return "";
   }
-  if (diag.range && !isEmptyRange(diag.range)) {
+};
+var diagnosticToString = (diag, fileName) => {
+  let message = `${fileName}:`;
+  if (diag.range && !isEmptyRange(diag.range))
     message += `${diag.range.start.line + 1}:${diag.range.start.character + 1} -`;
-  }
-  message += ` ${diag.severity}: `;
-  message += diag.message;
-  if (diag.rule) {
+  message += ` ${getSeverityIcon(diag.severity)} ${diag.severity}: `;
+  message += diag.message.replace(/"/g, "`");
+  if (diag.rule)
     message += ` (${diag.rule})`;
-  }
   return message;
 };
 var getRelativePath = (file, repoName) => {
@@ -31470,9 +31476,8 @@ async function getPullRequestData(runInfo) {
     repo: context2.repo.repo,
     pull_number: context2.issue.number
   };
-  core.info("requestParams: " + JSON.stringify(requestParams));
-  const { data: pullRequestData } = await octokit.rest.pulls.get(requestParams);
-  return pullRequestData;
+  const { data } = await octokit.rest.pulls.get(requestParams);
+  return data;
 }
 async function installPyright() {
   await (0, import_exec.exec)("npm", ["install", "-g", "pyright"]);
@@ -31488,9 +31493,7 @@ async function runPyright(files) {
     },
     ignoreReturnCode: true
   };
-  core.info("Running: " + pyrightCommand);
   await (0, import_exec.exec)(pyrightCommand, [], options);
-  core.info("Pyright output: " + output);
   return parseReport(JSON.parse(output));
 }
 async function commentOnPR(runInfo, report, pullRequest) {
@@ -31520,7 +31523,7 @@ async function commentOnPR(runInfo, report, pullRequest) {
 
 `;
     for (const diagnostic of fileDiagnostics) {
-      body += diagnosticToString(diagnostic) + "\n";
+      body += "- " + diagnosticToString(diagnostic, relativePath) + "\n";
     }
     await octokit.rest.pulls.createReviewComment({
       owner: context2.repo.owner,
@@ -31534,9 +31537,16 @@ async function commentOnPR(runInfo, report, pullRequest) {
     });
   }
   core.info("Creating summary comment.");
-  const summary = `## Pyright Summary 
-**\u274C Errors**: ${report.summary.errorCount}
-**\u26A0\uFE0F Warnings**: ${report.summary.warningCount}`;
+  let summary = `## Pyright Summary 
+**\u{1F4DD} Files Analyzed**: ${report.summary.filesAnalyzed}
+`;
+  if (report.summary.errorCount > 0)
+    summary += `**\u274C Errors**: ${report.summary.errorCount}
+`;
+  if (report.summary.warningCount > 0)
+    summary += `**\u26A0\uFE0F Warnings**: ${report.summary.warningCount}`;
+  if (report.summary.errorCount === 0 && report.summary.warningCount === 0)
+    summary += `\u2705 No errors or warnings found.`;
   await octokit.rest.issues.createComment({
     owner: context2.repo.owner,
     repo: context2.repo.repo,

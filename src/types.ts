@@ -6,19 +6,11 @@ const Position = v.object({
     character: v.number(),
 });
 
-function isEmptyPosition(p: Position) {
-    return p.line === 0 && p.character === 0;
-}
-
 export type Range = v.Infer<typeof Range>;
 const Range = v.object({
     start: Position,
     end: Position,
 });
-
-export function isEmptyRange(r: Range) {
-    return isEmptyPosition(r.start) && isEmptyPosition(r.end);
-}
 
 export type Diagnostic = v.Infer<typeof Diagnostic>;
 const Diagnostic = v.object({
@@ -40,6 +32,7 @@ const Report = v.object({
         errorCount: v.number(),
         warningCount: v.number(),
         informationCount: v.number(),
+        filesAnalyzed: v.number(),
     }),
 });
 

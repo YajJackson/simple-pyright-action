@@ -61,11 +61,8 @@ async function getPullRequestData(runInfo: ReturnType<typeof getRunInfo>) {
         repo: context.repo.repo,
         pull_number: context.issue.number,
     };
-    core.info("requestParams: " + JSON.stringify(requestParams));
-
-    const { data: pullRequestData } =
-        await octokit.rest.pulls.get(requestParams);
-    return pullRequestData;
+    const { data } = await octokit.rest.pulls.get(requestParams);
+    return data;
 }
 
 async function installPyright() {
@@ -85,9 +82,7 @@ async function runPyright(files: string[]): Promise<Report> {
         ignoreReturnCode: true,
     };
 
-    core.info("Running: " + pyrightCommand);
     await exec(pyrightCommand, [], options);
-    core.info("Pyright output: " + output);
     return parseReport(JSON.parse(output));
 }
 
@@ -128,7 +123,7 @@ async function commentOnPR(
         let body = `### Pyright Issues\n\n`;
 
         for (const diagnostic of fileDiagnostics) {
-            body += diagnosticToString(diagnostic) + "\n";
+            body += "- " + diagnosticToString(diagnostic, relativePath) + "\n";
         }
 
         await octokit.rest.pulls.createReviewComment({
@@ -143,12 +138,17 @@ async function commentOnPR(
         });
     }
 
-    // Create a comment on the PR with a summary of the issues
     core.info("Creating summary comment.");
-    const summary =
+    let summary =
         `## Pyright Summary \n` +
-        `**❌ Errors**: ${report.summary.errorCount}\n` +
-        `**⚠️ Warnings**: ${report.summary.warningCount}`;
+        `**📝 Files Analyzed**: ${report.summary.filesAnalyzed}\n`;
+
+    if (report.summary.errorCount > 0)
+        summary += `**❌ Errors**: ${report.summary.errorCount}\n`;
+    if (report.summary.warningCount > 0)
+        summary += `**⚠️ Warnings**: ${report.summary.warningCount}`;
+    if (report.summary.errorCount === 0 && report.summary.warningCount === 0)
+        summary += `✅ No errors or warnings found.`;
 
     await octokit.rest.issues.createComment({
         owner: context.repo.owner,
