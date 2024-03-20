@@ -23187,7 +23187,7 @@ var require_io = __commonJS({
     var assert_1 = require("assert");
     var path = __importStar(require("path"));
     var ioUtil = __importStar(require_io_util());
-    function cp2(source, dest, options = {}) {
+    function cp(source, dest, options = {}) {
       return __awaiter(this, void 0, void 0, function* () {
         const { force, recursive, copySourceDirectory } = readCopyOptions(options);
         const destStat = (yield ioUtil.exists(dest)) ? yield ioUtil.stat(dest) : null;
@@ -23213,7 +23213,7 @@ var require_io = __commonJS({
         }
       });
     }
-    exports2.cp = cp2;
+    exports2.cp = cp;
     function mv(source, dest, options = {}) {
       return __awaiter(this, void 0, void 0, function* () {
         if (yield ioUtil.exists(dest)) {
@@ -23676,10 +23676,10 @@ var require_toolrunner = __commonJS({
               return reject(new Error(`The cwd: ${this.options.cwd} does not exist!`));
             }
             const fileName = this._getSpawnFileName();
-            const cp2 = child.spawn(fileName, this._getSpawnArgs(optionsNonNull), this._getSpawnOptions(this.options, fileName));
+            const cp = child.spawn(fileName, this._getSpawnArgs(optionsNonNull), this._getSpawnOptions(this.options, fileName));
             let stdbuffer = "";
-            if (cp2.stdout) {
-              cp2.stdout.on("data", (data) => {
+            if (cp.stdout) {
+              cp.stdout.on("data", (data) => {
                 if (this.options.listeners && this.options.listeners.stdout) {
                   this.options.listeners.stdout(data);
                 }
@@ -23694,8 +23694,8 @@ var require_toolrunner = __commonJS({
               });
             }
             let errbuffer = "";
-            if (cp2.stderr) {
-              cp2.stderr.on("data", (data) => {
+            if (cp.stderr) {
+              cp.stderr.on("data", (data) => {
                 state.processStderr = true;
                 if (this.options.listeners && this.options.listeners.stderr) {
                   this.options.listeners.stderr(data);
@@ -23711,19 +23711,19 @@ var require_toolrunner = __commonJS({
                 });
               });
             }
-            cp2.on("error", (err) => {
+            cp.on("error", (err) => {
               state.processError = err.message;
               state.processExited = true;
               state.processClosed = true;
               state.CheckComplete();
             });
-            cp2.on("exit", (code) => {
+            cp.on("exit", (code) => {
               state.processExitCode = code;
               state.processExited = true;
               this._debug(`Exit code ${code} received from tool '${this.toolPath}'`);
               state.CheckComplete();
             });
-            cp2.on("close", (code) => {
+            cp.on("close", (code) => {
               state.processExitCode = code;
               state.processExited = true;
               state.processClosed = true;
@@ -23737,7 +23737,7 @@ var require_toolrunner = __commonJS({
               if (errbuffer.length > 0) {
                 this.emit("errline", errbuffer);
               }
-              cp2.removeAllListeners();
+              cp.removeAllListeners();
               if (error2) {
                 reject(error2);
               } else {
@@ -23745,10 +23745,10 @@ var require_toolrunner = __commonJS({
               }
             });
             if (this.options.input) {
-              if (!cp2.stdin) {
+              if (!cp.stdin) {
                 throw new Error("child process missing stdin");
               }
-              cp2.stdin.end(this.options.input);
+              cp.stdin.end(this.options.input);
             }
           }));
         });
@@ -29037,7 +29037,6 @@ var require_aggregate_error = __commonJS({
 var core = __toESM(require_core());
 var github = __toESM(require_github());
 var import_exec = __toESM(require_exec());
-var cp = __toESM(require("node:child_process"));
 var fs = __toESM(require("fs"));
 
 // node_modules/@badrap/valita/dist/node-mjs/index.mjs
@@ -30083,7 +30082,7 @@ function union(...options) {
   return new UnionType(options);
 }
 
-// src/schema.ts
+// src/types.ts
 var Position = object({
   line: number(),
   character: number()
@@ -31423,13 +31422,7 @@ async function run() {
       return;
     }
     await installPyright();
-    let pyrightReport;
-    try {
-      pyrightReport = await runPyright(pythonFiles);
-    } catch {
-      core.info("Pyright failed, trying alternate method");
-      pyrightReport = await runPyrightAlternate(pythonFiles);
-    }
+    const pyrightReport = await runPyright(pythonFiles);
     await commentOnPR(runInfo, pyrightReport, pullRequestData);
   } catch (error2) {
     core.setFailed(`Action failed with error: ${error2}`);
@@ -31480,26 +31473,6 @@ async function runPyright(files) {
   fs.writeFileSync(pyrightOutput, output);
   core.info("Wrote Pyright results to: " + pyrightOutput);
   return parseReport(JSON.parse(output));
-}
-async function runPyrightAlternate(files) {
-  const pyrightCommand = `npx pyright --outputjson ${files.join(" ")}`;
-  const { stdout, stderr, status } = cp.spawnSync(
-    "sh",
-    ["-c", pyrightCommand],
-    {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-      maxBuffer: 100 * 1024 * 1024
-    }
-  );
-  if (status !== 0) {
-    core.error(`Pyright failed with status ${status}: ${stderr}`);
-    throw new Error("Pyright alternate method failed");
-  }
-  if (!stdout.trim()) {
-    throw new Error("No output from Pyright");
-  }
-  return parseReport(JSON.parse(stdout));
 }
 async function commentOnPR(runInfo, report, pullRequest) {
   const diagnostics = report.generalDiagnostics;

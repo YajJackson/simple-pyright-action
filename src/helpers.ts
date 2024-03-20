@@ -1,4 +1,4 @@
-import { type Diagnostic, isEmptyRange } from "./schema";
+import { type Diagnostic, isEmptyRange } from "./types";
 
 export const pluralize = (n: number, singular: string, plural: string) => {
     return `${n} ${n === 1 ? singular : plural}`;

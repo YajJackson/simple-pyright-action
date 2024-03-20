@@ -3,7 +3,7 @@ import * as github from "@actions/github";
 import { exec } from "@actions/exec";
 import * as cp from "node:child_process";
 import * as fs from "fs";
-import { Report, parseReport } from "./schema";
+import { Report, parseReport } from "./types";
 import { getRelativePath } from "./helpers";
 import { Octokit } from "octokit";
 
@@ -25,13 +25,7 @@ export async function run() {
         }
 
         await installPyright();
-        let pyrightReport: Report;
-        try {
-            pyrightReport = await runPyright(pythonFiles);
-        } catch {
-            core.info("Pyright failed, trying alternate method");
-            pyrightReport = await runPyrightAlternate(pythonFiles);
-        }
+        const pyrightReport = await runPyright(pythonFiles);
         await commentOnPR(runInfo, pyrightReport, pullRequestData);
     } catch (error) {
         core.setFailed(`Action failed with error: ${error}`);
