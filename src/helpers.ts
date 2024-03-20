@@ -75,3 +75,9 @@ export const parseSummaryCommentKey = (input: string) => {
     const match = regex.exec(input);
     return match ? match[1] : null;
 };
+
+export const parseBaseSummaryCommentKey = (input: string) => {
+    const regex = /\[base-summary-key:([^\]]+)\]/;
+    const match = regex.exec(input);
+    return match ? match[1] : null;
+};
