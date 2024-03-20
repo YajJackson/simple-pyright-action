@@ -31491,7 +31491,9 @@ Message: ${diagnostic.message}`;
       path: getRelativePath(
         diagnostic.file,
         pullRequest.base.repo.full_name
-      )
+      ),
+      line: diagnostic.range.start.line,
+      position: diagnostic.range.start.character
     });
   }
   core.info("Creating summary comment.");

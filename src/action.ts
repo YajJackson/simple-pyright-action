@@ -125,6 +125,8 @@ async function commentOnPR(
                 diagnostic.file,
                 pullRequest.base.repo.full_name,
             ),
+            line: diagnostic.range.start.line,
+            position: diagnostic.range.start.character,
         });
     }
 
