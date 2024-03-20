@@ -114,6 +114,9 @@ async function commentOnPR(
     const keyedExistingReviewComments =
         existingReviewComments.reduce<KeyedComments>((acc, comment) => {
             const match = comment.body.match(keyRegex);
+            core.info(
+                `Keying user: ${comment.user.login} comment: ${comment.id} - ${comment.body} | match: ${match}`,
+            );
             if (match) {
                 const key = match[1];
                 acc[key] = comment;

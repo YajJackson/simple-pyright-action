@@ -31516,6 +31516,9 @@ async function commentOnPR(runInfo, report, pullRequest) {
   const keyRegex = /\[diagnostic-key:([^]]+)\]/;
   const keyedExistingReviewComments = existingReviewComments.reduce((acc, comment) => {
     const match = comment.body.match(keyRegex);
+    core.info(
+      `Keying user: ${comment.user.login} comment: ${comment.id} - ${comment.body} | match: ${match}`
+    );
     if (match) {
       const key = match[1];
       acc[key] = comment;
