@@ -71,7 +71,7 @@ export const parseCommentKey = (input: string) => {
 };
 
 export const parseSummaryCommentKey = (input: string) => {
-    const regex = /\[diagnostic-summparseCommentKey ary-key:([^\]]+)\]/;
+    const regex = /\[diagnostic-summary-key:([^\]]+)\]/;
     const match = regex.exec(input);
     return match ? match[1] : null;
 };

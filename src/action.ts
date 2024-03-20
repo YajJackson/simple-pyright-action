@@ -8,6 +8,7 @@ import {
     getRelativePath,
     parseCommentKey,
     parseSummaryCommentKey,
+    pluralize,
 } from "./helpers";
 import { Octokit } from "octokit";
 
@@ -146,10 +147,18 @@ async function commentOnPR(
     for (const [relativePath, fileDiagnostics] of Object.entries(
         diagnosticsByFile,
     )) {
-        let body = `### Pyright Issues\n\n`;
+        const diagnosticCount = fileDiagnostics.length;
+        let body = "<details>";
+        body += `\n<summary>${diagnosticCount} ${pluralize(
+            diagnosticCount,
+            "Issue",
+            "Issues",
+        )}</summary>\n\n`;
         for (const diagnostic of fileDiagnostics) {
-            body += "- " + diagnosticToString(diagnostic, relativePath) + "\n";
+            body += `- ${diagnosticToString(diagnostic, relativePath)}\n`;
         }
+        body += "</details>";
+
         const commentKey = generateCommentKey(relativePath, pullRequest.number);
         body += `\n\n###### [diagnostic-key:${commentKey}]`;
         processedCommentKeys.push(commentKey);
@@ -185,7 +194,7 @@ async function commentOnPR(
 
     // Delete any comments that are no longer needed
     for (const [key, comment] of Object.entries(keyedExistingReviewComments)) {
-        if (!processedCommentKeys.includes(key)) continue;
+        if (processedCommentKeys.includes(key)) continue;
         core.info(
             `Deleting comment for file: ${comment.path} with key: ${key}`,
         );

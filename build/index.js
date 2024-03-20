@@ -30116,6 +30116,9 @@ function parseReport(v) {
 
 // src/helpers.ts
 var import_crypto4 = require("crypto");
+var pluralize = (n, singular, plural) => {
+  return `${n} ${n === 1 ? singular : plural}`;
+};
 var isEmptyPosition = (p) => p.line === 0 && p.character === 0;
 var isEmptyRange = (r) => isEmptyPosition(r.start) && isEmptyPosition(r.end);
 var getSeverityIcon = (severity) => {
@@ -30160,7 +30163,7 @@ var parseCommentKey = (input) => {
   return match ? match[1] : null;
 };
 var parseSummaryCommentKey = (input) => {
-  const regex2 = /\[diagnostic-summparseCommentKey ary-key:([^\]]+)\]/;
+  const regex2 = /\[diagnostic-summary-key:([^\]]+)\]/;
   const match = regex2.exec(input);
   return match ? match[1] : null;
 };
@@ -31547,12 +31550,21 @@ async function commentOnPR(runInfo, report, pullRequest) {
   for (const [relativePath, fileDiagnostics] of Object.entries(
     diagnosticsByFile
   )) {
-    let body = `### Pyright Issues
+    const diagnosticCount = fileDiagnostics.length;
+    let body = "<details>";
+    body += `
+<summary>${diagnosticCount} ${pluralize(
+      diagnosticCount,
+      "Issue",
+      "Issues"
+    )}</summary>
 
 `;
     for (const diagnostic of fileDiagnostics) {
-      body += "- " + diagnosticToString(diagnostic, relativePath) + "\n";
+      body += `- ${diagnosticToString(diagnostic, relativePath)}
+`;
     }
+    body += "</details>";
     const commentKey = generateCommentKey(relativePath, pullRequest.number);
     body += `
 
@@ -31586,7 +31598,7 @@ async function commentOnPR(runInfo, report, pullRequest) {
     });
   }
   for (const [key, comment] of Object.entries(keyedExistingReviewComments)) {
-    if (!processedCommentKeys.includes(key))
+    if (processedCommentKeys.includes(key))
       continue;
     core.info(
       `Deleting comment for file: ${comment.path} with key: ${key}`
