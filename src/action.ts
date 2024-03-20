@@ -1,7 +1,6 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
 import { ExecOptions, exec } from "@actions/exec";
-import * as cp from "node:child_process";
 import { Report, parseReport } from "./types";
 import { getRelativePath } from "./helpers";
 import { Octokit } from "octokit";

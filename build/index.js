@@ -30115,9 +30115,9 @@ function parseReport(v) {
 
 // src/helpers.ts
 var core = __toESM(require_core());
-var getRelativePath = (fullPath, repo) => {
-  core.info(`Getting relative path for Full path: ${fullPath} repo: ${repo}`);
-  const endOfRepoNameIndex = fullPath.indexOf(repo) + repo.length;
+var getRelativePath = (fullPath, repoName) => {
+  core.info(`Getting relative path for Full path: ${fullPath} repo: ${repoName}`);
+  const endOfRepoNameIndex = fullPath.indexOf(repoName) + repoName.length;
   return fullPath.slice(endOfRepoNameIndex + 1);
 };
 
