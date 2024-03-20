@@ -115,7 +115,7 @@ async function commentOnPR(
 
         const relativePath = getRelativePath(
             diagnostic.file,
-            pullRequest.base.repo.full_name,
+            pullRequest.base.repo.name,
         );
 
         core.info("Creating comment for file: " + relativePath);
