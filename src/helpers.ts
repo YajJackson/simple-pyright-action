@@ -70,6 +70,12 @@ export const parseCommentKey = (input: string) => {
     return match ? match[1] : null;
 };
 
+export const parseSummaryCommentKey = (input: string) => {
+    const regex = /\[diagnostic-summparseCommentKey ary-key:([^\]]+)\]/;
+    const match = regex.exec(input);
+    return match ? match[1] : null;
+};
+
 // const exampleCommentBody = `### Pyright Issues
 //
 // - main.py:10:14 - ❌ error: Expression of type \`int\` cannot be assigned to declared type \`str\`

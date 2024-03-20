@@ -7,6 +7,7 @@ import {
     generateCommentKey,
     getRelativePath,
     parseCommentKey,
+    parseSummaryCommentKey,
 } from "./helpers";
 import { Octokit } from "octokit";
 
@@ -104,7 +105,7 @@ async function commentOnPR(
         await octokit.rest.pulls.listReviewComments({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            pull_number: pullRequest.number, // Make sure you have the PR number correctly here
+            pull_number: pullRequest.number,
         });
 
     type KeyedComments = {
@@ -141,6 +142,7 @@ async function commentOnPR(
     }
 
     // Create a comment for each diagnostic group
+    const processedCommentKeys: string[] = [];
     for (const [relativePath, fileDiagnostics] of Object.entries(
         diagnosticsByFile,
     )) {
@@ -150,9 +152,9 @@ async function commentOnPR(
         }
         const commentKey = generateCommentKey(relativePath, pullRequest.number);
         body += `\n\n###### [diagnostic-key:${commentKey}]`;
+        processedCommentKeys.push(commentKey);
 
         const existingComment = keyedExistingReviewComments[commentKey];
-
         if (existingComment) {
             core.info(
                 `Updating existing comment for file: ${relativePath} with key: ${commentKey}`,
@@ -181,7 +183,20 @@ async function commentOnPR(
         });
     }
 
-    core.info("Creating summary comment.");
+    // Delete any comments that are no longer needed
+    for (const [key, comment] of Object.entries(keyedExistingReviewComments)) {
+        if (!processedCommentKeys.includes(key)) continue;
+        core.info(
+            `Deleting comment for file: ${comment.path} with key: ${key}`,
+        );
+        await octokit.rest.pulls.deleteReviewComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            comment_id: comment.id,
+        });
+    }
+
+    core.info("Generating summary.");
     let summary =
         `## Pyright Summary \n` +
         `**📝 Files Analyzed**: ${report.summary.filesAnalyzed}\n`;
@@ -193,6 +208,37 @@ async function commentOnPR(
     if (report.summary.errorCount === 0 && report.summary.warningCount === 0)
         summary += `✅ No errors or warnings found.`;
 
+    const summaryKey = generateCommentKey(
+        "pyright-summary",
+        pullRequest.number,
+    );
+    summary += `\n\n###### [diagnostic-summary-key:${summaryKey}]`;
+
+    const { data: existingComments } = await octokit.rest.issues.listComments({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        issue_number: pullRequest.number,
+    });
+    const existingSummaryComment = existingComments.find((comment) => {
+        if (!comment.user) return false;
+        if (comment.user.login !== "github-actions[bot]") return false;
+        if (!comment.body) return false;
+        const key = parseSummaryCommentKey(comment.body);
+        return key === summaryKey;
+    });
+
+    if (existingSummaryComment) {
+        core.info(`Updating existing summary comment with key: ${summaryKey}`);
+        await octokit.rest.issues.updateComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            comment_id: existingSummaryComment.id,
+            body: summary,
+        });
+        return;
+    }
+
+    core.info(`Creating new summary comment with key: ${summaryKey}`);
     await octokit.rest.issues.createComment({
         owner: context.repo.owner,
         repo: context.repo.repo,

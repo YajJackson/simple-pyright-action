@@ -30159,6 +30159,11 @@ var parseCommentKey = (input) => {
   const match = regex2.exec(input);
   return match ? match[1] : null;
 };
+var parseSummaryCommentKey = (input) => {
+  const regex2 = /\[diagnostic-summparseCommentKey ary-key:([^\]]+)\]/;
+  const match = regex2.exec(input);
+  return match ? match[1] : null;
+};
 
 // node_modules/octokit/dist-web/index.js
 init_dist_web4();
@@ -31514,7 +31519,6 @@ async function commentOnPR(runInfo, report, pullRequest) {
     owner: context2.repo.owner,
     repo: context2.repo.repo,
     pull_number: pullRequest.number
-    // Make sure you have the PR number correctly here
   });
   const keyedExistingReviewComments = existingReviewComments.reduce((acc, comment) => {
     if (comment.user.login !== "github-actions[bot]")
@@ -31539,6 +31543,7 @@ async function commentOnPR(runInfo, report, pullRequest) {
     }
     diagnosticsByFile[relativePath].push(diagnostic);
   }
+  const processedCommentKeys = [];
   for (const [relativePath, fileDiagnostics] of Object.entries(
     diagnosticsByFile
   )) {
@@ -31552,6 +31557,7 @@ async function commentOnPR(runInfo, report, pullRequest) {
     body += `
 
 ###### [diagnostic-key:${commentKey}]`;
+    processedCommentKeys.push(commentKey);
     const existingComment = keyedExistingReviewComments[commentKey];
     if (existingComment) {
       core.info(
@@ -31579,7 +31585,19 @@ async function commentOnPR(runInfo, report, pullRequest) {
       body
     });
   }
-  core.info("Creating summary comment.");
+  for (const [key, comment] of Object.entries(keyedExistingReviewComments)) {
+    if (!processedCommentKeys.includes(key))
+      continue;
+    core.info(
+      `Deleting comment for file: ${comment.path} with key: ${key}`
+    );
+    await octokit.rest.pulls.deleteReviewComment({
+      owner: context2.repo.owner,
+      repo: context2.repo.repo,
+      comment_id: comment.id
+    });
+  }
+  core.info("Generating summary.");
   let summary = `## Pyright Summary 
 **\u{1F4DD} Files Analyzed**: ${report.summary.filesAnalyzed}
 `;
@@ -31590,6 +31608,39 @@ async function commentOnPR(runInfo, report, pullRequest) {
     summary += `**\u26A0\uFE0F Warnings**: ${report.summary.warningCount}`;
   if (report.summary.errorCount === 0 && report.summary.warningCount === 0)
     summary += `\u2705 No errors or warnings found.`;
+  const summaryKey = generateCommentKey(
+    "pyright-summary",
+    pullRequest.number
+  );
+  summary += `
+
+###### [diagnostic-summary-key:${summaryKey}]`;
+  const { data: existingComments } = await octokit.rest.issues.listComments({
+    owner: context2.repo.owner,
+    repo: context2.repo.repo,
+    issue_number: pullRequest.number
+  });
+  const existingSummaryComment = existingComments.find((comment) => {
+    if (!comment.user)
+      return false;
+    if (comment.user.login !== "github-actions[bot]")
+      return false;
+    if (!comment.body)
+      return false;
+    const key = parseSummaryCommentKey(comment.body);
+    return key === summaryKey;
+  });
+  if (existingSummaryComment) {
+    core.info(`Updating existing summary comment with key: ${summaryKey}`);
+    await octokit.rest.issues.updateComment({
+      owner: context2.repo.owner,
+      repo: context2.repo.repo,
+      comment_id: existingSummaryComment.id,
+      body: summary
+    });
+    return;
+  }
+  core.info(`Creating new summary comment with key: ${summaryKey}`);
   await octokit.rest.issues.createComment({
     owner: context2.repo.owner,
     repo: context2.repo.repo,
