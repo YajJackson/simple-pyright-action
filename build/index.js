@@ -30115,6 +30115,7 @@ function parseReport(v) {
 }
 
 // src/helpers.ts
+var import_crypto4 = require("crypto");
 var isEmptyPosition = (p) => p.line === 0 && p.character === 0;
 var isEmptyRange = (r) => isEmptyPosition(r.start) && isEmptyPosition(r.end);
 var getSeverityIcon = (severity) => {
@@ -30148,6 +30149,13 @@ var getRelativePath = (file, repoName) => {
   }
   return file.slice(secondOccurrenceStartIndex + repoName.length + 1);
 };
+var generateCommentKey = (filePath, pullRequestNumber) => {
+  const hash = (0, import_crypto4.createHash)("sha256");
+  hash.update(`${filePath}-${pullRequestNumber}`);
+  return hash.digest("hex").substring(0, 16);
+};
+var exampleKey = generateCommentKey("example", 1);
+console.log({ exampleKey });
 
 // node_modules/octokit/dist-web/index.js
 init_dist_web4();
@@ -31499,10 +31507,23 @@ async function runPyright(files) {
 async function commentOnPR(runInfo, report, pullRequest) {
   const { octokit, context: context2 } = runInfo;
   const diagnostics = report.generalDiagnostics;
+  const { data: existingReviewComments } = await octokit.rest.pulls.listReviewComments({
+    owner: context2.repo.owner,
+    repo: context2.repo.repo,
+    pull_number: pullRequest.number
+    // Make sure you have the PR number correctly here
+  });
+  const keyRegex = /\[diagnostic-key:([^]]+)\]/;
+  const keyedExistingReviewComments = existingReviewComments.reduce((acc, comment) => {
+    const match = comment.body.match(keyRegex);
+    if (match) {
+      const key = match[1];
+      acc[key] = comment;
+    }
+    return acc;
+  }, {});
   const diagnosticsByFile = {};
   for (const diagnostic of diagnostics) {
-    if (diagnostic.range === void 0)
-      continue;
     const relativePath = getRelativePath(
       diagnostic.file,
       pullRequest.base.repo.name
@@ -31521,6 +31542,26 @@ async function commentOnPR(runInfo, report, pullRequest) {
     for (const diagnostic of fileDiagnostics) {
       body += "- " + diagnosticToString(diagnostic, relativePath) + "\n";
     }
+    const commentKey = generateCommentKey(relativePath, pullRequest.number);
+    body += `
+
+###### [diagnostic-key:${commentKey}]`;
+    const existingComment = keyedExistingReviewComments[commentKey];
+    if (existingComment) {
+      core.info(
+        `Updating existing comment for file: ${relativePath} with key: ${commentKey}`
+      );
+      await octokit.rest.pulls.updateReviewComment({
+        owner: context2.repo.owner,
+        repo: context2.repo.repo,
+        comment_id: existingComment.id,
+        body
+      });
+      continue;
+    }
+    core.info(
+      `Creating new comment for file: ${relativePath} with key: ${commentKey}`
+    );
     await octokit.rest.pulls.createReviewComment({
       owner: context2.repo.owner,
       repo: context2.repo.repo,

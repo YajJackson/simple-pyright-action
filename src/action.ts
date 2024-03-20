@@ -2,7 +2,11 @@ import * as core from "@actions/core";
 import * as github from "@actions/github";
 import { ExecOptions, exec } from "@actions/exec";
 import { Diagnostic, Report, parseReport } from "./types";
-import { diagnosticToString, getRelativePath } from "./helpers";
+import {
+    diagnosticToString,
+    generateCommentKey,
+    getRelativePath,
+} from "./helpers";
 import { Octokit } from "octokit";
 
 export async function run() {
@@ -95,11 +99,31 @@ async function commentOnPR(
 
     const diagnostics = report.generalDiagnostics;
 
+    const { data: existingReviewComments } =
+        await octokit.rest.pulls.listReviewComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: pullRequest.number, // Make sure you have the PR number correctly here
+        });
+
+    type KeyedComments = {
+        [key: string]: (typeof existingReviewComments)[0];
+    };
+
+    const keyRegex = /\[diagnostic-key:([^]]+)\]/;
+    const keyedExistingReviewComments =
+        existingReviewComments.reduce<KeyedComments>((acc, comment) => {
+            const match = comment.body.match(keyRegex);
+            if (match) {
+                const key = match[1];
+                acc[key] = comment;
+            }
+            return acc;
+        }, {});
+
     // Group diagnostics by relative path
     const diagnosticsByFile: { [key: string]: Diagnostic[] } = {};
     for (const diagnostic of diagnostics) {
-        if (diagnostic.range === undefined) continue;
-
         const relativePath = getRelativePath(
             diagnostic.file,
             pullRequest.base.repo.name,
@@ -112,16 +136,35 @@ async function commentOnPR(
         diagnosticsByFile[relativePath].push(diagnostic);
     }
 
-    // Create a comment for each file
+    // Create a comment for each diagnostic group
     for (const [relativePath, fileDiagnostics] of Object.entries(
         diagnosticsByFile,
     )) {
         let body = `### Pyright Issues\n\n`;
-
         for (const diagnostic of fileDiagnostics) {
             body += "- " + diagnosticToString(diagnostic, relativePath) + "\n";
         }
+        const commentKey = generateCommentKey(relativePath, pullRequest.number);
+        body += `\n\n###### [diagnostic-key:${commentKey}]`;
 
+        const existingComment = keyedExistingReviewComments[commentKey];
+
+        if (existingComment) {
+            core.info(
+                `Updating existing comment for file: ${relativePath} with key: ${commentKey}`,
+            );
+            await octokit.rest.pulls.updateReviewComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body,
+            });
+            continue;
+        }
+
+        core.info(
+            `Creating new comment for file: ${relativePath} with key: ${commentKey}`,
+        );
         await octokit.rest.pulls.createReviewComment({
             owner: context.repo.owner,
             repo: context.repo.repo,

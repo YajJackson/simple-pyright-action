@@ -1,4 +1,4 @@
-import * as core from "@actions/core";
+import { createHash } from "crypto";
 import { Diagnostic, Position, Range } from "./types";
 
 export const pluralize = (n: number, singular: string, plural: string) => {
@@ -54,3 +54,14 @@ export const getRelativePath = (file: string, repoName: string) => {
 
     return file.slice(secondOccurrenceStartIndex + repoName.length + 1);
 };
+
+export const generateCommentKey = (
+    filePath: string,
+    pullRequestNumber: number,
+) => {
+    const hash = createHash("sha256");
+    hash.update(`${filePath}-${pullRequestNumber}`);
+    return hash.digest("hex").substring(0, 16);
+};
+const exampleKey = generateCommentKey("example", 1);
+console.log({ exampleKey });
