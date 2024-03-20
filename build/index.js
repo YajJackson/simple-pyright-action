@@ -18737,7 +18737,7 @@ var require_core = __commonJS({
       return inputs.map((input) => input.trim());
     }
     exports2.getMultilineInput = getMultilineInput;
-    function getBooleanInput(name, options) {
+    function getBooleanInput2(name, options) {
       const trueValue = ["true", "True", "TRUE"];
       const falseValue = ["false", "False", "FALSE"];
       const val = getInput2(name, options);
@@ -18748,7 +18748,7 @@ var require_core = __commonJS({
       throw new TypeError(`Input does not meet YAML 1.2 "Core Schema" specification: ${name}
 Support boolean input list: \`true | True | TRUE | false | False | FALSE\``);
     }
-    exports2.getBooleanInput = getBooleanInput;
+    exports2.getBooleanInput = getBooleanInput2;
     function setOutput(name, value) {
       const filePath = process.env["GITHUB_OUTPUT"] || "";
       if (filePath) {
@@ -26962,14 +26962,14 @@ var require_commonjs = __commonJS({
        * Find a value for which the supplied fn method returns a truthy value,
        * similar to Array.find().  fn is called as fn(value, key, cache).
        */
-      find(fn, getOptions = {}) {
+      find(fn, getOptions2 = {}) {
         for (const i of this.#indexes()) {
           const v = this.#valList[i];
           const value = this.#isBackgroundFetch(v) ? v.__staleWhileFetching : v;
           if (value === void 0)
             continue;
           if (fn(value, this.#keyList[i], this)) {
-            return this.get(this.#keyList[i], getOptions);
+            return this.get(this.#keyList[i], getOptions2);
           }
         }
       }
@@ -27489,8 +27489,8 @@ var require_commonjs = __commonJS({
        *
        * If the key is not found, get() will return `undefined`.
        */
-      get(k, getOptions = {}) {
-        const { allowStale = this.allowStale, updateAgeOnGet = this.updateAgeOnGet, noDeleteOnStaleGet = this.noDeleteOnStaleGet, status } = getOptions;
+      get(k, getOptions2 = {}) {
+        const { allowStale = this.allowStale, updateAgeOnGet = this.updateAgeOnGet, noDeleteOnStaleGet = this.noDeleteOnStaleGet, status } = getOptions2;
         const index = this.#keyMap.get(k);
         if (index !== void 0) {
           const value = this.#valList[index];
@@ -31461,14 +31461,15 @@ async function run() {
       runInfo,
       pullRequestData
     );
-    core.info("pythonFiles: " + JSON.stringify(pythonFiles));
     if (pythonFiles.length === 0) {
       core.info("No Python files have changed.");
       return;
     }
     await installPyright();
     const pyrightReport = await runPyright(pythonFiles);
-    await commentOnPR(runInfo, pyrightReport, pullRequestData);
+    if (runInfo.options.includeFileComments)
+      await addFileComments(runInfo, pyrightReport, pullRequestData);
+    await addSummaryComment(runInfo, pyrightReport, pullRequestData);
   } catch (error) {
     core.setFailed(`Action failed with error: ${error}`);
   }
@@ -31477,7 +31478,12 @@ var getRunInfo = () => {
   const token = core.getInput("github-token", { required: true });
   const octokit = new Octokit2({ auth: token });
   const context2 = github.context;
-  return { token, octokit, context: context2 };
+  const options = getOptions();
+  return { token, octokit, context: context2, options };
+};
+var getOptions = () => {
+  const includeFileComments = core.getBooleanInput("include-file-comments") ?? true;
+  return { includeFileComments };
 };
 async function getChangedPythonFiles(runInfo, pullRequest) {
   const { octokit, context: context2 } = runInfo;
@@ -31515,7 +31521,8 @@ async function runPyright(files) {
   await (0, import_exec.exec)(pyrightCommand, [], options);
   return parseReport(JSON.parse(output));
 }
-async function commentOnPR(runInfo, report, pullRequest) {
+async function addFileComments(runInfo, report, pullRequest) {
+  core.info("Generating file comments.");
   const { octokit, context: context2 } = runInfo;
   const diagnostics = report.generalDiagnostics;
   const { data: existingReviewComments } = await octokit.rest.pulls.listReviewComments({
@@ -31608,7 +31615,10 @@ async function commentOnPR(runInfo, report, pullRequest) {
       comment_id: comment.id
     });
   }
+}
+async function addSummaryComment(runInfo, report, pullRequest) {
   core.info("Generating summary.");
+  const { octokit, context: context2 } = runInfo;
   let summary = `## Pyright Summary 
 **\u{1F4DD} Files Analyzed**: ${report.summary.filesAnalyzed}
 `;

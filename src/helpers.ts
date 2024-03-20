@@ -75,16 +75,3 @@ export const parseSummaryCommentKey = (input: string) => {
     const match = regex.exec(input);
     return match ? match[1] : null;
 };
-
-// const exampleCommentBody = `### Pyright Issues
-//
-// - main.py:10:14 - ❌ error: Expression of type \`int\` cannot be assigned to declared type \`str\`
-//   \`int\` is incompatible with \`str\` (reportAssignmentType)
-// - main.py:11:24 - ❌ error: Expression of type \`int\` cannot be assigned to declared type \`str\`
-//   \`int\` is incompatible with \`str\` (reportAssignmentType)
-//
-//
-// ###### [diagnostic-key:89be8cb1cee8ef6a]`;
-//
-// const commentKey = parseCommentKey(exampleCommentBody);
-// console.log({ commentKey });

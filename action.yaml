@@ -10,6 +10,12 @@ inputs:
         description: "GitHub Token"
         required: true
 
+    # Optional
+    include-file-comments:
+        description: "Include file comments in the output."
+        required: false
+        default: "true"
+
 runs:
     using: "node20"
     main: "build/index.js"

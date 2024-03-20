@@ -20,7 +20,6 @@ export async function run() {
             runInfo,
             pullRequestData,
         );
-        core.info("pythonFiles: " + JSON.stringify(pythonFiles));
         if (pythonFiles.length === 0) {
             core.info("No Python files have changed.");
             return;
@@ -28,7 +27,10 @@ export async function run() {
 
         await installPyright();
         const pyrightReport = await runPyright(pythonFiles);
-        await commentOnPR(runInfo, pyrightReport, pullRequestData);
+
+        if (runInfo.options.includeFileComments)
+            await addFileComments(runInfo, pyrightReport, pullRequestData);
+        await addSummaryComment(runInfo, pyrightReport, pullRequestData);
     } catch (error) {
         core.setFailed(`Action failed with error: ${error}`);
     }
@@ -38,7 +40,14 @@ const getRunInfo = () => {
     const token = core.getInput("github-token", { required: true });
     const octokit = new Octokit({ auth: token });
     const context = github.context;
-    return { token, octokit, context };
+    const options = getOptions();
+    return { token, octokit, context, options };
+};
+
+const getOptions = () => {
+    const includeFileComments =
+        core.getBooleanInput("include-file-comments") ?? true;
+    return { includeFileComments };
 };
 
 async function getChangedPythonFiles(
@@ -93,11 +102,13 @@ async function runPyright(files: string[]): Promise<Report> {
     return parseReport(JSON.parse(output));
 }
 
-async function commentOnPR(
+async function addFileComments(
     runInfo: ReturnType<typeof getRunInfo>,
     report: Report,
     pullRequest: Awaited<ReturnType<typeof getPullRequestData>>,
 ) {
+    core.info("Generating file comments.");
+
     const { octokit, context } = runInfo;
 
     const diagnostics = report.generalDiagnostics;
@@ -203,8 +214,17 @@ async function commentOnPR(
             comment_id: comment.id,
         });
     }
+}
 
+async function addSummaryComment(
+    runInfo: ReturnType<typeof getRunInfo>,
+    report: Report,
+    pullRequest: Awaited<ReturnType<typeof getPullRequestData>>,
+) {
     core.info("Generating summary.");
+
+    const { octokit, context } = runInfo;
+
     let summary =
         `## Pyright Summary \n` +
         `**📝 Files Analyzed**: ${report.summary.filesAnalyzed}\n`;
