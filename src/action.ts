@@ -265,7 +265,7 @@ async function addFileComments(
         if (!diagnosticsByFile[relativePath])
             diagnosticsByFile[relativePath] = [];
 
-        diagnosticsByFile[relativePath].push(diagnostic);
+        diagnosticsByFile[relativePath]?.push(diagnostic);
     }
 
     // Create a comment for each diagnostic group

@@ -31639,7 +31639,7 @@ async function addFileComments(runInfo, report, pullRequest) {
     );
     if (!diagnosticsByFile[relativePath])
       diagnosticsByFile[relativePath] = [];
-    diagnosticsByFile[relativePath].push(diagnostic);
+    diagnosticsByFile[relativePath]?.push(diagnostic);
   }
   const processedCommentKeys = [];
   for (const [relativePath, fileDiagnostics] of Object.entries(
