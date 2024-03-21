@@ -267,17 +267,16 @@ async function addFileComments(
     for (const [relativePath, fileDiagnostics] of Object.entries(
         diagnosticsByFile,
     )) {
-        let body = "<details>";
-        body += `\n<summary>${pluralize(
-            fileDiagnostics.length,
-            "Issue",
-            "Issues",
-        )}</summary>\n\n`;
+        let body = "> [!CAUTION]";
+        body += "\n> <details>";
+        const issueText = pluralize(fileDiagnostics.length, "Issue", "Issues");
+        body += `\n> <summary>${issueText}</summary>`;
+        body += "\n>";
 
         for (const diagnostic of fileDiagnostics)
-            body += `- ${formatDiagnostic(diagnostic, relativePath)}\n`;
+            body += `\n> - ${formatDiagnostic(diagnostic, relativePath)}`;
 
-        body += "</details>";
+        body += "\n> </details>";
 
         const keyValue = `${pullRequest.number}-${relativePath}`;
         const commentKey = generateCommentKey(keyPrefix, keyValue);

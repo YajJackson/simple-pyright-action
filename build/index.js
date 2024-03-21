@@ -31638,19 +31638,16 @@ async function addFileComments(runInfo, report, pullRequest) {
   for (const [relativePath, fileDiagnostics] of Object.entries(
     diagnosticsByFile
   )) {
-    let body = "<details>";
+    let body = "> [!CAUTION]";
+    body += "\n> <details>";
+    const issueText = pluralize(fileDiagnostics.length, "Issue", "Issues");
     body += `
-<summary>${pluralize(
-      fileDiagnostics.length,
-      "Issue",
-      "Issues"
-    )}</summary>
-
-`;
+> <summary>${issueText}</summary>`;
+    body += "\n>";
     for (const diagnostic of fileDiagnostics)
-      body += `- ${formatDiagnostic(diagnostic, relativePath)}
-`;
-    body += "</details>";
+      body += `
+> - ${formatDiagnostic(diagnostic, relativePath)}`;
+    body += "\n> </details>";
     const keyValue = `${pullRequest.number}-${relativePath}`;
     const commentKey = generateCommentKey(keyPrefix, keyValue);
     body += `
