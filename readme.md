@@ -1,5 +1,5 @@
 # Simple Pyright Action
-Runs [pright](https://github.com/microsoft/pyright) on your pull requests!
+Runs [pyright](https://github.com/microsoft/pyright) on your pull requests!
 
 # Features
 - File-specific comments on python files with pyright issues.
