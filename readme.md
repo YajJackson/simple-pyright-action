@@ -68,7 +68,7 @@ jobs:
       - run: echo "$PWD/.venv/bin" >> $GITHUB_PATH
 
       - name: Simple Pyright Action
-        uses: YajJackson/simple-pyright-action@v0.0.34
+        uses: YajJackson/simple-pyright-action@v1.0.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           include-base-comparison: true
