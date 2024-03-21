@@ -1,5 +1,4 @@
 # Simple Pyright Action
-Inspired by [pyright-action](https://github.com/jakebailey/pyright-action).
 Runs [pright](https://github.com/microsoft/pyright) on your pull requests!
 
 # Features
@@ -89,3 +88,8 @@ jobs:
 # Contributing
 Please come help make this a bit better.
 Feel welcomed to open an issue or pull request.
+
+# Notes
+Inspired by [pyright-action](https://github.com/jakebailey/pyright-action).
+
+This project exists to help teams incrementally improve code quality in large legacy python codebases via code reviews with type safety in mind.
