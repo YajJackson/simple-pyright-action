@@ -93,3 +93,6 @@ Feel welcomed to open an issue or pull request.
 Inspired by [pyright-action](https://github.com/jakebailey/pyright-action).
 
 This project exists to encourage code reviews with type safety in mind.
+
+# TODO
+- [ ] submodules as part of summary report (add new option)
