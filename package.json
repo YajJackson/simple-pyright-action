@@ -23,11 +23,13 @@
         "@actions/exec": "^1.1.1",
         "@actions/github": "^6.0.0",
         "@badrap/valita": "^0.3.6",
-        "octokit": "^3.1.2",
-        "typescript": "^5.4.3"
+        "octokit": "^3.1.2"
     },
     "devDependencies": {
+        "@tsconfig/node20": "^20.1.2",
+        "@tsconfig/strictest": "^2.0.3",
         "@types/node": "^20.11.30",
-        "esbuild": "^0.20.2"
+        "esbuild": "^0.20.2",
+        "typescript": "^5.4.3"
     }
 }
