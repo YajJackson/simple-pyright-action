@@ -31460,6 +31460,7 @@ async function run() {
       core.info("No Python files have changed.");
       return;
     }
+    await installPyright(runInfo.options.pyrightVersion);
     const pyrightReport = await runPyright(pythonFiles);
     if (runInfo.options.includeFileComments)
       await addFileComments(runInfo, pyrightReport, pullRequestData);
@@ -31483,7 +31484,13 @@ var getOptions = () => {
   const includeFileComments = core.getBooleanInput("include-file-comments") ?? true;
   const includeBaseComparison = core.getBooleanInput("include-base-comparison") ?? false;
   const failOnIssueIncrease = core.getBooleanInput("fail-on-issue-increase") ?? false;
-  return { includeFileComments, includeBaseComparison, failOnIssueIncrease };
+  const pyrightVersion = core.getInput("pyright-version") || "latest";
+  return {
+    includeFileComments,
+    includeBaseComparison,
+    failOnIssueIncrease,
+    pyrightVersion
+  };
 };
 async function getChangedPythonFiles(runInfo, pullRequest) {
   const { octokit, context: context2 } = runInfo;
@@ -31507,11 +31514,10 @@ async function getPullRequestData(runInfo) {
   const { data } = await octokit.rest.pulls.get(requestParams);
   return data;
 }
-async function installPyright() {
-  await (0, import_exec.exec)("npm", ["install", "-g", "pyright"]);
+async function installPyright(version2 = "latest") {
+  await (0, import_exec.exec)("npm", ["install", "-g", `pyright@${version2}`]);
 }
 async function runPyright(files) {
-  await installPyright();
   let pyrightCommand = `pyright --outputjson`;
   if (files)
     pyrightCommand += ` ${files.join(" ")}`;

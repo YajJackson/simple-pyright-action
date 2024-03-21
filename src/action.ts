@@ -26,6 +26,8 @@ export async function run() {
             return;
         }
 
+        await installPyright(runInfo.options.pyrightVersion);
+
         const pyrightReport = await runPyright(pythonFiles);
 
         if (runInfo.options.includeFileComments)
@@ -56,7 +58,13 @@ const getOptions = () => {
         core.getBooleanInput("include-base-comparison") ?? false;
     const failOnIssueIncrease =
         core.getBooleanInput("fail-on-issue-increase") ?? false;
-    return { includeFileComments, includeBaseComparison, failOnIssueIncrease };
+    const pyrightVersion = core.getInput("pyright-version") || "latest";
+    return {
+        includeFileComments,
+        includeBaseComparison,
+        failOnIssueIncrease,
+        pyrightVersion,
+    };
 };
 
 async function getChangedPythonFiles(
@@ -94,13 +102,11 @@ async function getPullRequestData(runInfo: ReturnType<typeof getRunInfo>) {
     return data;
 }
 
-async function installPyright() {
-    await exec("npm", ["install", "-g", "pyright"]);
+async function installPyright(version: string = "latest") {
+    await exec("npm", ["install", "-g", `pyright@${version}`]);
 }
 
 async function runPyright(files?: string[]): Promise<Report> {
-    await installPyright();
-
     let pyrightCommand = `pyright --outputjson`;
     if (files) pyrightCommand += ` ${files.join(" ")}`;
 
