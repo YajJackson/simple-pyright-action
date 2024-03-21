@@ -29,6 +29,10 @@ inputs:
         description: "When this is true, the action will fail if the number of issues increases from the base to the head."
         required: false
         default: "false"
+    pyright-version:
+        description: "The npm version of pyright to use."
+        required: false
+        default: "latest"
 ```
 
 # Example Usage
