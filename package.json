@@ -3,13 +3,13 @@
     "version": "1.0.0",
     "description": "GitHub Action that adds pyright checks to python pull requests.",
     "author": "Jay Jackson",
-    "main": "build/index.js",
+    "main": "dist/index.js",
     "repository": {
         "type": "git",
         "url": "git+https://github.com/YajJackson/simple-pyright-action.git"
     },
     "scripts": {
-        "build": "esbuild src/index.ts --bundle --outfile=build/index.js --platform=node --target=node20 --main-fields=module,main"
+        "build": "esbuild src/index.ts --bundle --outfile=dist/index.js --platform=node --target=node20 --main-fields=module,main"
     },
     "keywords": [
         "python",
