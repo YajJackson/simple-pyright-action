@@ -124,7 +124,7 @@ async function checkoutBaseBranch(
     pullRequest: Awaited<ReturnType<typeof getPullRequestData>>,
 ) {
     core.info(`Checking out base branch: ${pullRequest.base.ref}`);
-    await exec("git", ["fetch", "origin", `${pullRequest.base.ref}`]);
+    // await exec("git", ["fetch", "origin", `${pullRequest.base.ref}`]);
     await exec("git", ["checkout", `${pullRequest.base.ref}`]);
 }
 
