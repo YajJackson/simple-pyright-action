@@ -24,6 +24,10 @@ inputs:
         description: "When this is true, the action will fail if the number of issues increases from the base to the head."
         required: false
         default: "false"
+    skip-fetch:
+        description: "When this is true, the action will skip fetching the base branch. This is useful when the base branch is already checked out."
+        required: false
+        default: "false"
 
 runs:
     using: "node20"

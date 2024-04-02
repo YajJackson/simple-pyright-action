@@ -56,7 +56,14 @@ const getOptions = () => {
         core.getBooleanInput("include-base-comparison") ?? false;
     const failOnIssueIncrease =
         core.getBooleanInput("fail-on-issue-increase") ?? false;
-    return { includeFileComments, includeBaseComparison, failOnIssueIncrease };
+    const skipFetch = core.getBooleanInput("skip-fetch") ?? false;
+
+    return {
+        includeFileComments,
+        includeBaseComparison,
+        failOnIssueIncrease,
+        skipFetch,
+    };
 };
 
 async function getChangedPythonFiles(
@@ -121,10 +128,14 @@ async function runPyright(files?: string[]): Promise<Report> {
 }
 
 async function checkoutBaseBranch(
+    runInfo: ReturnType<typeof getRunInfo>,
     pullRequest: Awaited<ReturnType<typeof getPullRequestData>>,
 ) {
     core.info(`Checking out base branch: ${pullRequest.base.ref}`);
-    // await exec("git", ["fetch", "origin", `${pullRequest.base.ref}`]);
+
+    if (!runInfo.options.skipFetch)
+        await exec("git", ["fetch", "origin", `${pullRequest.base.ref}`]);
+
     await exec("git", ["checkout", `${pullRequest.base.ref}`]);
 }
 
@@ -138,7 +149,7 @@ async function addBaseComparisonComment(
 
     // Generate pyright reports for the head and base branches
     const headReport = await runPyright();
-    await checkoutBaseBranch(pullRequest);
+    await checkoutBaseBranch(runInfo, pullRequest);
     const baseReport = await runPyright();
 
     // Format the summary message
